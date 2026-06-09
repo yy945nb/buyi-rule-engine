@@ -1,0 +1,65 @@
+package com.ymware.engine.config;
+
+import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.config.BeanPostProcessor;
+import org.springframework.core.task.TaskDecorator;
+import org.springframework.lang.NonNull;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.stereotype.Component;
+
+import java.lang.reflect.Field;
+import java.util.Map;
+import java.util.Objects;
+
+/**
+ * 跨进程链路跟踪线程池PostProcessor处理器
+ */
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class ThreadPoolTaskExecutorBeanPostProcessor implements BeanPostProcessor {
+
+    @SneakyThrows
+    @Override
+    public Object postProcessBeforeInitialization(@NonNull Object bean, @NonNull String beanName) throws BeansException {
+        if (bean instanceof ThreadPoolTaskExecutor) {
+            ThreadPoolTaskExecutor threadPoolTaskExecutor = (ThreadPoolTaskExecutor) bean;
+            Field taskDecoratorField = ThreadPoolTaskExecutor.class.getDeclaredField("taskDecorator");
+            taskDecoratorField.setAccessible(true);
+            TaskDecorator taskDecorator = (TaskDecorator) taskDecoratorField.get(threadPoolTaskExecutor);
+            TracerTaskDecorator tracerTaskDecorator = new TracerTaskDecorator(taskDecorator);
+            threadPoolTaskExecutor.setTaskDecorator(tracerTaskDecorator);
+            return threadPoolTaskExecutor;
+        }
+        return bean;
+    }
+
+    @RequiredArgsConstructor
+    public static class TracerTaskDecorator implements TaskDecorator {
+
+        private final TaskDecorator delegate;
+
+        @NonNull
+        @Override
+        public Runnable decorate(@NonNull Runnable runnable) {
+            Map<String, String> context = MDC.getCopyOfContextMap();
+            Runnable finalRunnable = Objects.nonNull(delegate) ? delegate.decorate(runnable) : runnable;
+            return () -> {
+                try {
+                    if (context != null) {
+                        MDC.setContextMap(context);
+                    }
+                    finalRunnable.run();
+                } finally {
+                    MDC.clear();
+                }
+            };
+        }
+
+    }
+
+}

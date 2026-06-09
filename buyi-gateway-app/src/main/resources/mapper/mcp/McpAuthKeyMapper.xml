@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ymware.gateway.mcp.mapper.McpAuthKeyMapper">
+
+    <resultMap id="BaseResultMap" type="com.ymware.gateway.mcp.model.McpAuthKeyDO">
+        <id column="id" property="id"/>
+        <result column="key_hash" property="keyHash"/>
+        <result column="key_prefix" property="keyPrefix"/>
+        <result column="user_id" property="userId"/>
+        <result column="service_id" property="serviceId"/>
+        <result column="expires_at" property="expiresAt"/>
+        <result column="is_active" property="isActive"/>
+        <result column="version_no" property="versionNo"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="last_used_at" property="lastUsedAt"/>
+        <result column="deleted" property="deleted"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, key_hash, key_prefix, user_id, service_id, expires_at, is_active,
+        version_no, create_time, update_time, last_used_at, deleted
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO mcp_auth_keys (key_hash, key_prefix, user_id, service_id, expires_at, is_active)
+        VALUES (#{keyHash}, #{keyPrefix}, #{userId}, #{serviceId}, #{expiresAt}, #{isActive})
+    </insert>
+
+    <update id="update">
+        UPDATE mcp_auth_keys
+        SET is_active = #{isActive}, expires_at = #{expiresAt}, version_no = version_no + 1
+        WHERE id = #{id} AND version_no = #{versionNo} AND deleted = b'0'
+    </update>
+
+    <update id="deleteById">
+        UPDATE mcp_auth_keys SET deleted = b'1' WHERE id = #{id} AND deleted = b'0'
+    </update>
+
+    <select id="findById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM mcp_auth_keys WHERE id = #{id} AND deleted = b'0'
+    </select>
+
+    <select id="findByKeyHash" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM mcp_auth_keys WHERE key_hash = #{keyHash} AND deleted = b'0'
+    </select>
+
+    <select id="findByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM mcp_auth_keys WHERE user_id = #{userId} AND deleted = b'0'
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="findByServiceId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM mcp_auth_keys WHERE service_id = #{serviceId} AND deleted = b'0'
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="findByUserIdAndServiceId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM mcp_auth_keys
+        WHERE user_id = #{userId} AND service_id = #{serviceId} AND deleted = b'0'
+        LIMIT 1
+    </select>
+
+    <select id="findByConditions" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM mcp_auth_keys
+        WHERE deleted = b'0'
+        <if test="userId != null and userId != ''">
+            AND user_id = #{userId}
+        </if>
+        <if test="serviceId != null and serviceId != ''">
+            AND service_id = #{serviceId}
+        </if>
+        ORDER BY create_time DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countByConditions" resultType="int">
+        SELECT COUNT(1)
+        FROM mcp_auth_keys
+        WHERE deleted = b'0'
+        <if test="userId != null and userId != ''">
+            AND user_id = #{userId}
+        </if>
+        <if test="serviceId != null and serviceId != ''">
+            AND service_id = #{serviceId}
+        </if>
+    </select>
+
+    <update id="updateLastUsedTime">
+        UPDATE mcp_auth_keys
+        SET last_used_at = #{lastUsedAt}
+        WHERE id = #{id} AND deleted = b'0'
+    </update>
+
+    <update id="deactivateUserServiceKeys">
+        UPDATE mcp_auth_keys
+        SET is_active = b'0', version_no = version_no + 1
+        WHERE user_id = #{userId} AND service_id = #{serviceId} AND is_active = b'1' AND deleted = b'0'
+    </update>
+
+</mapper>

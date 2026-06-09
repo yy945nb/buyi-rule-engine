@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ymware.gateway.mcp.mapper.McpServiceStatsMapper">
+
+    <resultMap id="BaseResultMap" type="com.ymware.gateway.mcp.model.McpServiceStatsDO">
+        <id column="id" property="id"/>
+        <result column="service_id" property="serviceId"/>
+        <result column="date_key" property="dateKey"/>
+        <result column="total_calls" property="totalCalls"/>
+        <result column="success_calls" property="successCalls"/>
+        <result column="failed_calls" property="failedCalls"/>
+        <result column="avg_response_time_ms" property="avgResponseTimeMs"/>
+        <result column="max_response_time_ms" property="maxResponseTimeMs"/>
+        <result column="unique_users" property="uniqueUsers"/>
+        <result column="version_no" property="versionNo"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="deleted" property="deleted"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, service_id, date_key, total_calls, success_calls, failed_calls,
+        avg_response_time_ms, max_response_time_ms, unique_users,
+        version_no, create_time, update_time, deleted
+    </sql>
+
+    <insert id="insertOrUpdate">
+        INSERT INTO mcp_service_statistics
+            (service_id, date_key, total_calls, success_calls, failed_calls,
+             avg_response_time_ms, max_response_time_ms, unique_users)
+        VALUES
+            (#{serviceId}, #{dateKey}, #{totalCalls}, #{successCalls}, #{failedCalls},
+             #{avgResponseTimeMs}, #{maxResponseTimeMs}, #{uniqueUsers})
+        ON DUPLICATE KEY UPDATE
+            total_calls = total_calls + VALUES(total_calls),
+            success_calls = success_calls + VALUES(success_calls),
+            failed_calls = failed_calls + VALUES(failed_calls),
+            avg_response_time_ms = CASE
+                WHEN (total_calls + VALUES(total_calls)) > 0
+                THEN (avg_response_time_ms * total_calls + VALUES(avg_response_time_ms) * VALUES(total_calls))
+                     / (total_calls + VALUES(total_calls))
+                ELSE VALUES(avg_response_time_ms)
+            END,
+            max_response_time_ms = GREATEST(max_response_time_ms, VALUES(max_response_time_ms)),
+            unique_users = GREATEST(unique_users, VALUES(unique_users)),
+            version_no = version_no + 1
+    </insert>
+
+    <select id="findByServiceIdAndDate" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM mcp_service_statistics
+        WHERE service_id = #{serviceId} AND date_key = #{dateKey} AND deleted = b'0'
+    </select>
+
+    <select id="findRecentByServiceId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM mcp_service_statistics
+        WHERE service_id = #{serviceId}
+          AND date_key &gt;= DATE_SUB(CURDATE(), INTERVAL #{days} DAY)
+          AND deleted = b'0'
+        ORDER BY date_key DESC
+    </select>
+
+    <select id="findDistinctServiceIds" resultType="string">
+        SELECT DISTINCT service_id
+        FROM mcp_service_statistics
+        WHERE deleted = b'0'
+    </select>
+
+</mapper>

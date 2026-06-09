@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: ai-gateway
+  cloud:
+    nacos:
+      server-addr: ${NACOS_SERVER_ADDR:127.0.0.1}:${NACOS_PORT:8848}
+      discovery:
+        group: DEFAULT_GROUP
+        namespace: ${spring.profiles.active:public}
+        server-addr: ${spring.cloud.nacos.server-addr}
+        enabled: ${NACOS_ENABLED:true}
+      config:
+        server-addr: ${spring.cloud.nacos.server-addr}
+        group: DEFAULT_GROUP
+        namespace: ${spring.profiles.active:public}
+        import-check:
+          enabled: false
+        enabled: ${NACOS_ENABLED:true}

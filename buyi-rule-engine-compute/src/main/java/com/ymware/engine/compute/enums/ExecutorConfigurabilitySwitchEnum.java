@@ -1,0 +1,14 @@
+package com.ymware.engine.compute.enums;
+
+/**
+ * @author liukaixiong
+ * @date 2024/9/11 - 11:19
+ */
+public enum ExecutorConfigurabilitySwitchEnum {
+
+    /**
+     * 开启追踪
+     */
+    enableTrace,
+
+}

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ymware.gateway.mcp.routing.mapper.ServiceCapabilityMapper">
+
+    <resultMap id="BaseResultMap" type="com.ymware.gateway.mcp.routing.model.ServiceCapabilityDO">
+        <id column="id" property="id"/>
+        <result column="service_id" property="serviceId"/>
+        <result column="capability_tag" property="capabilityTag"/>
+        <result column="description" property="description"/>
+        <result column="max_concurrent" property="maxConcurrent"/>
+        <result column="weight" property="weight"/>
+        <result column="health_status" property="healthStatus"/>
+        <result column="avg_response_time_ms" property="avgResponseTimeMs"/>
+        <result column="version_no" property="versionNo"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="deleted" property="deleted"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, service_id, capability_tag, description, max_concurrent, weight,
+        health_status, avg_response_time_ms, version_no, create_time, update_time, deleted
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO mcp_service_capabilities (service_id, capability_tag, description,
+            max_concurrent, weight, health_status)
+        VALUES (#{serviceId}, #{capabilityTag}, #{description},
+            #{maxConcurrent}, #{weight}, #{healthStatus})
+    </insert>
+
+    <update id="update">
+        UPDATE mcp_service_capabilities
+        SET capability_tag = #{capabilityTag}, description = #{description},
+            max_concurrent = #{maxConcurrent}, weight = #{weight},
+            health_status = #{healthStatus}, version_no = version_no + 1
+        WHERE id = #{id} AND version_no = #{versionNo} AND deleted = b'0'
+    </update>
+
+    <update id="deleteById">
+        UPDATE mcp_service_capabilities SET deleted = b'1' WHERE id = #{id} AND deleted = b'0'
+    </update>
+
+    <select id="findById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM mcp_service_capabilities WHERE id = #{id} AND deleted = b'0'
+    </select>
+
+    <select id="findByServiceId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM mcp_service_capabilities WHERE service_id = #{serviceId} AND deleted = b'0'
+    </select>
+
+    <select id="findByCapabilityTag" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM mcp_service_capabilities WHERE capability_tag = #{capabilityTag} AND deleted = b'0'
+        ORDER BY weight DESC
+    </select>
+
+    <select id="findAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM mcp_service_capabilities WHERE deleted = b'0'
+    </select>
+
+    <update id="updateHealthStatus">
+        UPDATE mcp_service_capabilities
+        SET health_status = #{healthStatus}, version_no = version_no + 1
+        WHERE service_id = #{serviceId} AND capability_tag = #{capabilityTag} AND deleted = b'0'
+    </update>
+
+    <update id="updateAvgResponseTime">
+        UPDATE mcp_service_capabilities
+        SET avg_response_time_ms = #{avgResponseTimeMs}, version_no = version_no + 1
+        WHERE service_id = #{serviceId} AND capability_tag = #{capabilityTag} AND deleted = b'0'
+    </update>
+
+</mapper>

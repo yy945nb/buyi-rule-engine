@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ymware.gateway.mcp.routing.mapper.RoutingRuleMapper">
+
+    <resultMap id="BaseResultMap" type="com.ymware.gateway.mcp.routing.model.RoutingRuleDO">
+        <id column="id" property="id"/>
+        <result column="rule_name" property="ruleName"/>
+        <result column="description" property="description"/>
+        <result column="priority" property="priority"/>
+        <result column="match_tool_pattern" property="matchToolPattern"/>
+        <result column="match_keywords" property="matchKeywords"/>
+        <result column="match_service_type" property="matchServiceType"/>
+        <result column="match_arg_path" property="matchArgPath"/>
+        <result column="targets_json" property="targetsJson"/>
+        <result column="enabled" property="enabled"/>
+        <result column="version_no" property="versionNo"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="deleted" property="deleted"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, rule_name, description, priority, match_tool_pattern, match_keywords,
+        match_service_type, match_arg_path, targets_json, enabled,
+        version_no, create_time, update_time, deleted
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO mcp_routing_rules (rule_name, description, priority, match_tool_pattern,
+            match_keywords, match_service_type, match_arg_path, targets_json, enabled)
+        VALUES (#{ruleName}, #{description}, #{priority}, #{matchToolPattern},
+            #{matchKeywords}, #{matchServiceType}, #{matchArgPath}, #{targetsJson}, #{enabled})
+    </insert>
+
+    <update id="update">
+        UPDATE mcp_routing_rules
+        SET rule_name = #{ruleName}, description = #{description}, priority = #{priority},
+            match_tool_pattern = #{matchToolPattern}, match_keywords = #{matchKeywords},
+            match_service_type = #{matchServiceType}, match_arg_path = #{matchArgPath},
+            targets_json = #{targetsJson}, enabled = #{enabled}, version_no = version_no + 1
+        WHERE id = #{id} AND version_no = #{versionNo} AND deleted = b'0'
+    </update>
+
+    <update id="deleteById">
+        UPDATE mcp_routing_rules SET deleted = b'1' WHERE id = #{id} AND deleted = b'0'
+    </update>
+
+    <select id="findById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM mcp_routing_rules WHERE id = #{id} AND deleted = b'0'
+    </select>
+
+    <select id="findAllEnabled" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM mcp_routing_rules WHERE enabled = b'1' AND deleted = b'0'
+        ORDER BY priority DESC
+    </select>
+
+    <select id="findByConditions" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM mcp_routing_rules WHERE deleted = b'0'
+        <if test="enabled != null">
+            AND enabled = #{enabled}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (rule_name LIKE CONCAT('%', #{keyword}, '%') OR description LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY priority DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countByConditions" resultType="int">
+        SELECT COUNT(1) FROM mcp_routing_rules WHERE deleted = b'0'
+        <if test="enabled != null">
+            AND enabled = #{enabled}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (rule_name LIKE CONCAT('%', #{keyword}, '%') OR description LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+    </select>
+
+</mapper>

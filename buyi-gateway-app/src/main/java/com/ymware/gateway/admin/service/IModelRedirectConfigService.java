@@ -1,0 +1,50 @@
+package com.ymware.gateway.admin.service;
+
+import com.ymware.gateway.admin.model.req.ModelRedirectConfigAddReq;
+import com.ymware.gateway.admin.model.req.ModelRedirectConfigQueryReq;
+import com.ymware.gateway.admin.model.req.ModelRedirectConfigUpdateReq;
+import com.ymware.gateway.admin.model.rsp.ModelRedirectConfigRsp;
+import com.ymware.gateway.common.result.PageResult;
+
+import java.util.List;
+
+/**
+ * 模型重定向配置管理服务接口
+ */
+public interface IModelRedirectConfigService {
+
+    /**
+     * 新增模型重定向配置
+     */
+    Long add(ModelRedirectConfigAddReq req);
+
+    /**
+     * 更新模型重定向配置
+     */
+    void update(ModelRedirectConfigUpdateReq req);
+
+    /**
+     * 删除模型重定向配置
+     */
+    void delete(Long id);
+
+    /**
+     * 查询模型重定向配置详情
+     */
+    ModelRedirectConfigRsp getById(Long id);
+
+    /**
+     * 分页查询模型重定向配置
+     */
+    PageResult<ModelRedirectConfigRsp> list(ModelRedirectConfigQueryReq req);
+
+    /**
+     * 切换路由规则启用/禁用状态
+     */
+    void toggle(Long id, Long versionNo);
+
+    /**
+     * 查询去重后的对外模型名称列表（跨 Provider 去重）
+     */
+    List<String> listDistinctAliasNames();
+}

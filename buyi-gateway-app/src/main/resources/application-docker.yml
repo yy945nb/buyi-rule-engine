@@ -1,0 +1,41 @@
+spring:
+  config:
+    activate:
+      on-profile: docker
+
+  # Docker 环境 MySQL 数据源配置（通过环境变量注入）
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:ai_gateway}?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: ${DB_USER:root}
+    password: ${DB_PASS:}
+
+  # Docker 环境 Redis 配置（通过环境变量注入）
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASS:}
+      database: 0
+
+# Docker 环境 API Key 加密密钥（通过环境变量注入）
+gateway:
+  security:
+    api-key-secret: ${GATEWAY_API_KEY_SECRET:}
+
+  # Docker 环境 CORS 配置：
+  # allow-credentials 设为 true 以支持前端 withCredentials 跨域携带 Cookie
+  cors:
+    allow-credentials: true
+    # allowed-origins: "*" 配合 allow-credentials: true 时，
+    # CorsConfig 会自动切换为 allowedOriginPattern("*") 以符合浏览器规范
+    allowed-origins: "*"
+
+  admin-auth:
+    trust-forwarded-headers: true
+    trusted-origins:
+      - "*"
+    # CSRF Cookie SameSite 属性，默认 Lax。
+    # - 同源部署（前端由 Spring Boot 直接提供，如直接访问 http://host:port）→ 保持 Lax 即可
+    # - 跨站部署（前端与后端不同源，如 Nginx 反向代理到不同域名/端口）→ 需设为 None，
+    #   但必须同时启用 HTTPS（浏览器要求 SameSite=None 的 Cookie 必须带 Secure 标记）
+    # csrf-cookie-same-site: "None"

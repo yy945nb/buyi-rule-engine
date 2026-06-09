@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ymware.gateway.admin.mapper.RequestLogMapper">
+
+    <!-- 分页查询公共条件片段，依赖外层查询使用 rl 作为 request_log 表别名 -->
+    <sql id="pageConditions">
+        <if test="req.startTime != null">
+            AND rl.create_time &gt;= #{req.startTime}
+        </if>
+        <if test="req.endTime != null">
+            AND rl.create_time &lt;= #{req.endTime}
+        </if>
+        <if test="req.providerType != null and req.providerType != ''">
+            AND rl.provider_type = #{req.providerType}
+        </if>
+        <if test="req.providerCode != null and req.providerCode != ''">
+            AND rl.provider_code = #{req.providerCode}
+        </if>
+        <if test="req.status != null and req.status != ''">
+            AND rl.status = #{req.status}
+        </if>
+        <if test="req.aliasModel != null and req.aliasModel != ''">
+            AND rl.alias_model LIKE CONCAT('%', #{req.aliasModel}, '%')
+        </if>
+        <if test="req.requestId != null and req.requestId != ''">
+            AND rl.request_id = #{req.requestId}
+        </if>
+        <if test="req.isStream != null">
+            AND rl.is_stream = #{req.isStream}
+        </if>
+        <choose>
+            <when test="req.hasRetry != null and req.hasRetry">
+                AND rl.retry_count &gt; 0
+            </when>
+            <when test="req.hasRetry != null and !req.hasRetry">
+                AND (rl.retry_count IS NULL OR rl.retry_count = 0)
+            </when>
+        </choose>
+        <choose>
+            <when test="req.hasFailover != null and req.hasFailover">
+                AND rl.failover_count &gt; 0
+            </when>
+            <when test="req.hasFailover != null and !req.hasFailover">
+                AND (rl.failover_count IS NULL OR rl.failover_count = 0)
+            </when>
+        </choose>
+    </sql>
+
+    <!-- 分页查询请求日志 -->
+    <select id="selectPage" resultType="com.ymware.gateway.admin.model.dataobject.RequestLogDO">
+        SELECT rl.id, rl.request_id, rl.alias_model, rl.target_model, rl.provider_code, rl.provider_type,
+               rl.response_protocol, rl.request_path, rl.http_method, rl.api_key_prefix, rl.provider_api_key_masked, rl.provider_key_id,
+               rl.candidate_count, rl.attempt_count, rl.failover_count, rl.retry_count, rl.circuit_open_skipped_count,
+               rl.rate_limit_triggered, rl.upstream_http_status, rl.upstream_error_type, rl.terminal_stage,
+               rl.thinking_enabled, rl.thinking_depth, rl.thinking_mapped, rl.trace_details_json, rl.first_token_latency_ms,
+               rl.is_stream, rl.prompt_tokens, rl.cached_input_tokens, rl.completion_tokens, rl.total_tokens, rl.duration_ms,
+               rl.status, rl.error_code, rl.error_message, rl.source_ip, rl.create_time,
+               pak.remark AS provider_api_key_remark
+        FROM request_log rl
+        LEFT JOIN provider_api_key pak ON rl.provider_key_id = pak.id
+        WHERE 1=1
+        <include refid="pageConditions"/>
+        ORDER BY rl.create_time DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- 统计满足条件的总记录数 -->
+    <select id="countPage" resultType="long">
+        SELECT COUNT(1)
+        FROM request_log rl
+        WHERE 1=1
+        <include refid="pageConditions"/>
+    </select>
+
+</mapper>

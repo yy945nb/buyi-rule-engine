@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ymware.gateway.mcp.mapper.McpToolMappingMapper">
+
+    <resultMap id="BaseResultMap" type="com.ymware.gateway.mcp.model.McpToolMappingDO">
+        <id column="id" property="id"/>
+        <result column="service_id" property="serviceId"/>
+        <result column="tool_name" property="toolName"/>
+        <result column="tool_description" property="toolDescription"/>
+        <result column="input_schema_json" property="inputSchemaJson"/>
+        <result column="rest_endpoint" property="restEndpoint"/>
+        <result column="rest_method" property="restMethod"/>
+        <result column="rest_headers_json" property="restHeadersJson"/>
+        <result column="rest_param_mapping_json" property="restParamMappingJson"/>
+        <result column="response_mapping_json" property="responseMappingJson"/>
+        <result column="enabled" property="enabled"/>
+        <result column="version_no" property="versionNo"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="deleted" property="deleted"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, service_id, tool_name, tool_description, input_schema_json,
+        rest_endpoint, rest_method, rest_headers_json, rest_param_mapping_json,
+        response_mapping_json, enabled, version_no, create_time, update_time, deleted
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO mcp_tool_mapping
+            (service_id, tool_name, tool_description, input_schema_json,
+             rest_endpoint, rest_method, rest_headers_json, rest_param_mapping_json,
+             response_mapping_json, enabled)
+        VALUES
+            (#{serviceId}, #{toolName}, #{toolDescription}, #{inputSchemaJson},
+             #{restEndpoint}, #{restMethod}, #{restHeadersJson}, #{restParamMappingJson},
+             #{responseMappingJson}, #{enabled})
+    </insert>
+
+    <update id="update">
+        UPDATE mcp_tool_mapping
+        SET tool_name = #{toolName}, tool_description = #{toolDescription},
+            input_schema_json = #{inputSchemaJson}, rest_endpoint = #{restEndpoint},
+            rest_method = #{restMethod}, rest_headers_json = #{restHeadersJson},
+            rest_param_mapping_json = #{restParamMappingJson},
+            response_mapping_json = #{responseMappingJson}, enabled = #{enabled},
+            version_no = version_no + 1
+        WHERE id = #{id} AND version_no = #{versionNo} AND deleted = b'0'
+    </update>
+
+    <update id="deleteById">
+        UPDATE mcp_tool_mapping SET deleted = b'1' WHERE id = #{id} AND deleted = b'0'
+    </update>
+
+    <select id="findById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM mcp_tool_mapping WHERE id = #{id} AND deleted = b'0'
+    </select>
+
+    <select id="findByServiceId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM mcp_tool_mapping WHERE service_id = #{serviceId} AND deleted = b'0'
+        ORDER BY tool_name
+    </select>
+
+    <select id="findByServiceIdAndToolName" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM mcp_tool_mapping
+        WHERE service_id = #{serviceId} AND tool_name = #{toolName} AND deleted = b'0'
+    </select>
+
+    <select id="findEnabledByServiceId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM mcp_tool_mapping
+        WHERE service_id = #{serviceId} AND enabled = b'1' AND deleted = b'0'
+        ORDER BY tool_name
+    </select>
+
+    <select id="findAllEnabled" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM mcp_tool_mapping
+        WHERE enabled = b'1' AND deleted = b'0'
+        ORDER BY service_id, tool_name
+    </select>
+
+</mapper>

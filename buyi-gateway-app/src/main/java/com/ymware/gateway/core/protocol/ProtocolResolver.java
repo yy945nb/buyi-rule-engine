@@ -1,0 +1,59 @@
+package com.ymware.gateway.core.protocol;
+
+import com.ymware.gateway.sdk.model.ProtocolType;
+import org.springframework.web.server.ServerWebExchange;
+
+/**
+ * 协议解析工具类
+ * <p>
+ * 根据 URL 路径或 ServerWebExchange attributes 解析当前请求对应的协议类型。
+ * 用于 GlobalExceptionHandler 和 ApiKeyAuthWebFilter 中选择错误响应格式。
+ * </p>
+ */
+public final class ProtocolResolver {
+
+    /** exchange attribute key：存储协议类型 */
+    public static final String PROTOCOL_ATTRIBUTE_KEY = ProtocolResolver.class.getName() + ".PROTOCOL";
+
+    private ProtocolResolver() {
+    }
+
+    /**
+     * 从 exchange attributes 中获取协议类型。
+     * 优先读取 controller 写入的属性，未设置时按路径前缀推断，默认 OPENAI_CHAT。
+     */
+    public static ProtocolType fromExchange(ServerWebExchange exchange) {
+        ProtocolType protocol = exchange.getAttribute(PROTOCOL_ATTRIBUTE_KEY);
+        if (protocol != null) {
+            return protocol;
+        }
+        return fromPath(exchange.getRequest().getPath().value());
+    }
+
+    /**
+     * 按 URL 路径前缀推断协议类型
+     * <p>注意：同前缀的子路径必须排在父路径之前（如 /v1/messages/count_tokens 在 /v1/messages 之前），
+     * 否则 startsWith 会优先匹配父路径。</p>
+     */
+    public static ProtocolType fromPath(String path) {
+        if (path.startsWith("/v1/responses")) {
+            return ProtocolType.OPENAI_RESPONSES;
+        }
+        if (path.startsWith("/v1/messages/count_tokens")) {
+            return ProtocolType.ANTHROPIC;
+        }
+        if (path.startsWith("/v1/messages")) {
+            return ProtocolType.ANTHROPIC;
+        }
+        if (path.startsWith("/v1/embeddings")) {
+            return ProtocolType.OPENAI_EMBEDDING;
+        }
+        if (path.startsWith("/v1/rerank")) {
+            return ProtocolType.RERANK;
+        }
+        if (path.startsWith("/v1beta/")) {
+            return ProtocolType.GEMINI;
+        }
+        return ProtocolType.OPENAI_CHAT;
+    }
+}

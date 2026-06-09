@@ -1,0 +1,64 @@
+package com.ymware.engine.controller;
+
+import com.ymware.engine.common.vo.BaseResult;
+import com.ymware.engine.common.vo.PlainResult;
+import com.ymware.engine.service.RuleService;
+import com.ymware.engine.vo.rule.general.SaveActionRequest;
+import com.ymware.engine.vo.rule.RuleBody;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import jakarta.annotation.Resource;
+import jakarta.validation.Valid;
+
+/**
+ * 〈RuleController〉
+ *
+ * @author 丁乾文
+ * @date 2021/7/28 1:02 下午
+ * @since 1.0.0
+ */
+@Tag(name = "规则控制器")
+@RestController
+@RequestMapping("ruleEngine/rule")
+public class RuleController {
+
+
+    @Resource
+    private RuleService ruleService;
+
+
+    /**
+     * 保存规则并返回规则id
+     *
+     * @param ruleBody 规则体
+     * @return 规则id
+     */
+    @Operation(summary = "保存或者更新规则")
+    @PostMapping("saveOrUpdateRule")
+    public BaseResult saveOrUpdateRule(@RequestBody RuleBody ruleBody) {
+        PlainResult<Long> plainResult = new PlainResult<>();
+        plainResult.setData(ruleService.saveOrUpdateRule(ruleBody));
+        return plainResult;
+    }
+
+    /**
+     * 保存结果
+     *
+     * @param saveActionRequest 保存结果
+     * @return 保存结果
+     */
+    @PostMapping("saveAction")
+    @Operation(summary = "保存结果")
+    public PlainResult<Boolean> saveAction(@RequestBody @Valid SaveActionRequest saveActionRequest) {
+        PlainResult<Boolean> plainResult = new PlainResult<>();
+        plainResult.setData(ruleService.saveAction(saveActionRequest));
+        return plainResult;
+    }
+
+
+}

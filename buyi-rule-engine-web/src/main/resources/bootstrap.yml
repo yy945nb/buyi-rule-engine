@@ -1,0 +1,28 @@
+nacos:
+  enable: ${app.nacos.enable:true}
+spring:
+  cloud:
+    nacos:
+      # nacos 服务地址
+      server-addr: ${app.nacos.ip:127.0.0.1}:${app.nacos.port:8848}
+      discovery:
+        # 注册组
+        group: DEFAULT_GROUP
+        namespace: ${spring.profiles.active}
+        server-addr: ${spring.cloud.nacos.server-addr}
+        enabled: ${nacos.enable}
+      config:
+        server-addr: ${spring.cloud.nacos.server-addr}
+        # 配置组
+        group: DEFAULT_GROUP
+        namespace: ${spring.profiles.active}
+        import-check:
+          enabled: false
+        enabled: ${nacos.enable}
+    config:
+      override-system-properties: false
+  config:
+    import:
+      - optional:nacos:expression-mind-map-server.yml
+  profiles:
+    active: ${config.profile:public}

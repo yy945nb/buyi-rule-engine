@@ -1,0 +1,180 @@
+package com.ymware.engine.controller;
+
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.google.common.base.Splitter;
+import com.ymware.engine.model.VariableApiModel;
+import com.ymware.engine.utils.Jsons;
+import com.ymware.engine.constants.BaseConstants;
+import com.ymware.engine.entity.ExpressionExecutorBaseInfo;
+import com.ymware.engine.entity.ExpressionExecutorInfoConfig;
+import com.ymware.engine.entity.ExpressionTraceLogIndex;
+import com.ymware.engine.model.response.RestResult;
+import com.ymware.engine.model.dto.doc.ExpressionDocDto;
+import com.ymware.engine.util.ExpressionUtils;
+import com.ymware.engine.util.MapFlattenUtil;
+import com.ymware.engine.service.*;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
+/**
+ * <p>
+ * 函数配置表 前端控制器
+ * </p>
+ *
+ * @author bsy
+ * @since 2022-06-08
+ */
+@Tag(name = "文档管理")
+@RestController
+@CrossOrigin(origins = "*")
+@RequestMapping(BaseConstants.BASE_PATH + "/doc")
+@Validated
+public class ExpressionDocController {
+    @Autowired
+    private ExpressionDocService documentService;
+    @Autowired
+    private ExpressionVarTypeService variableTypeService;
+    @Autowired
+    private ExpressionExecutorConfigService executorConfigService;
+    @Autowired
+    private ExpressionConfigService expressionConfigService;
+    @Autowired
+    private ExpressionTraceLogIndexService traceLogIndexService;
+
+    @Operation(summary = "查询函数变量信息")
+    @GetMapping("/getList")
+    public RestResult<List<ExpressionDocDto>> findFuncList(@RequestParam("executorId") Long executorId, @RequestParam(value = "expressionId", required = false) Long expressionId, @RequestParam(value = "groupName", required = false) String groupName, @RequestParam(value = "name", required = false, defaultValue = "") String name, @RequestParam(value = "limit", required = false, defaultValue = "10") Integer limit) {
+        final ExpressionExecutorBaseInfo executorBaseInfo = executorConfigService.getById(executorId);
+        final String serviceName = executorBaseInfo.getServiceName();
+        final String varDefinition = executorBaseInfo.getVarDefinition();
+
+        List<ExpressionDocDto> matchExpressionList = new ArrayList<>();
+
+        // 注入追踪变量
+        injectTraceEnvList(matchExpressionList, expressionId, name, serviceName);
+
+        if (StringUtils.isNotEmpty(varDefinition) && varDefinition.contains(name)) {
+            final Map<String, String> envContext = Splitter.on(',').withKeyValueSeparator("=").split(varDefinition);
+            matchExpressionList.addAll(injectEnvNameList(envContext, serviceName, name, "执行器注入变量"));
+        }
+
+        List<ExpressionDocDto> expressionList = documentService.getLikeName(executorBaseInfo.getServiceName(), groupName, name, limit);
+        if (!expressionList.isEmpty()) {
+            matchExpressionList.addAll(expressionList);
+        }
+
+        return RestResult.ok(matchExpressionList);
+    }
+
+    @Operation(summary = "查询函数变量信息")
+    @PostMapping("/translateExpression")
+    public RestResult<List<ExpressionDocDto>> translateExpression(@RequestParam(value = "expressionId") Long expressionId) {
+        final ExpressionExecutorInfoConfig executorDetailConfig = expressionConfigService.getById(expressionId);
+        final ExpressionExecutorBaseInfo executorBaseInfo = executorConfigService.getById(executorDetailConfig.getExecutorId());
+        final String serviceName = executorBaseInfo.getServiceName();
+        final String varDefinition = executorBaseInfo.getVarDefinition();
+
+        List<ExpressionDocDto> matchExpressionList = new ArrayList<>();
+        final String expressionContent = executorDetailConfig.getExpressionContent();
+
+        for (String variableName : ExpressionUtils.getExpressionVariableList(expressionContent)) {
+            // 注入追踪变量
+            injectTraceEnvList(matchExpressionList, expressionId, variableName, serviceName);
+
+            if (StringUtils.isNotEmpty(varDefinition) && varDefinition.contains(variableName)) {
+                final Map<String, String> envContext = Splitter.on(',').withKeyValueSeparator("=").split(varDefinition);
+                matchExpressionList.addAll(injectEnvNameList(envContext, serviceName, variableName, "执行器注入变量"));
+            }
+        }
+
+        for (String functionName : ExpressionUtils.getExpressionFunctionList(expressionContent)) {
+            List<ExpressionDocDto> expressionList = documentService.getLikeName(executorBaseInfo.getServiceName(), null, functionName, 1);
+            if (!expressionList.isEmpty()) {
+                matchExpressionList.addAll(expressionList);
+            }
+        }
+
+        return RestResult.ok(matchExpressionList);
+    }
+
+    private void injectDocType(Map<String, String> envContext, List<ExpressionDocDto> matchExpressionList, String serviceName, String name) {
+        // 戴弃用
+        envContext.keySet().stream().filter(key -> key.contains(name)).forEach(var -> {
+            final String type = envContext.get(var);
+            final List<VariableApiModel> keyInfo = variableTypeService.getKeyInfo(serviceName, type);
+            if (keyInfo != null) {
+                keyInfo.stream().map(doc -> {
+                    ExpressionDocDto docInfo = new ExpressionDocDto();
+                    docInfo.setType("var");
+                    docInfo.setName(name + "." + doc.getName());
+                    docInfo.setGroupName(doc.getGroupName());
+                    docInfo.setParams(Collections.singletonList(doc.getType()));
+                    docInfo.setServiceName(serviceName);
+                    docInfo.setExample(docInfo.getName());
+                    docInfo.setDescribe(doc.getDescribe());
+                    return docInfo;
+                }).forEach(matchExpressionList::add);
+            }
+        });
+        matchExpressionList.addAll(injectEnvNameList(envContext, serviceName, name, "配置变量"));
+    }
+
+    private void injectTraceEnvList(List<ExpressionDocDto> matchExpressionList, Long expressionId, String name, String serviceName) {
+        if (expressionId != null) {
+            final ExpressionTraceLogIndex expressionSampleBody = traceLogIndexService.getExpressionSampleBody(expressionId);
+            if (expressionSampleBody != null) {
+                final String envBody = expressionSampleBody.getEnvBody();
+
+                if (StringUtils.isEmpty(envBody)) {
+                    return;
+                }
+
+                Map<String, Object> envContext = Jsons.parseObject(envBody, new TypeReference<Map<String, Object>>() {
+                });
+
+                if (envContext == null) {
+                    return;
+                }
+
+                if (name != null && name.indexOf(".") > 0) {
+                    envContext = MapFlattenUtil.flatten(envContext);
+                }
+
+                Map<String, String> envContextMap = envContext.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> String.valueOf(e.getValue())));
+
+                matchExpressionList.addAll(injectEnvNameList(envContextMap, serviceName, name, "追踪可用变量"));
+            }
+        }
+    }
+
+    private List<ExpressionDocDto> injectEnvNameList(Map<String, String> envContext, String serviceName, String name, String describe) {
+        return envContext.keySet().stream().filter(key -> name == null || key.contains(name)).map(var -> {
+            final String value = envContext.get(var);
+            ExpressionDocDto docInfo = new ExpressionDocDto();
+            docInfo.setType("var");
+            docInfo.setName(var);
+            docInfo.setGroupName(var);
+            docInfo.setServiceName(serviceName);
+            docInfo.setExample(value);
+            docInfo.setDescribe(describe);
+            return docInfo;
+        }).collect(Collectors.toList());
+    }
+
+    @Operation(summary = "查询信息")
+    @PostMapping("/getTypeList")
+    public RestResult<Set<Object>> getTypeList(@RequestParam("executorId") Long executorId) {
+        final ExpressionExecutorBaseInfo executorBaseInfo = executorConfigService.getById(executorId);
+        final Set<Object> allTypeList = variableTypeService.getAllTypeList(executorBaseInfo.getServiceName());
+        return RestResult.ok(allTypeList);
+    }
+
+}

@@ -1,0 +1,47 @@
+package com.ymware.engine.model.dto.request;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Data;
+
+import java.io.Serializable;
+import java.util.Date;
+
+@Schema
+@Data
+public class QueryExpressionConfigRequest implements Serializable {
+
+    private Long id;
+    //    @Schema(description = "执行器编号")
+    private Long executorId;
+    //    @Schema(description = "上级编号")
+    private Long parentId;
+    //    @Schema(description = "表达式类型", allowableValues = "action,condition,trigger,callback")
+    private String expressionType;
+
+    //    @Schema(description = "追踪日志编号")
+    private Long traceLogId;
+    /**
+     * 表达式描述
+     */
+//    @Schema(description = "表达式描述")
+    private String expressionDescription;
+    /**
+     * 表达式内容
+     */
+//    @Schema(description = "表达式内容")
+    private String expressionContent;
+
+    /**
+     * 表达式状态:0.启用,1.禁用
+     */
+//    @Schema(description = "表达式状态")
+    private Integer expressionStatus;
+
+    /**
+     * 未命中的开始时间
+     */
+    @JsonFormat(pattern = "yyyy-MM-dd", timezone = "GMT+8")
+    private Date missStartDate;
+
+}

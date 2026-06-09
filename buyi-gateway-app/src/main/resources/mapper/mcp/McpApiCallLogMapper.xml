@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ymware.gateway.mcp.mapper.McpApiCallLogMapper">
+
+    <resultMap id="BaseResultMap" type="com.ymware.gateway.mcp.model.McpApiCallLogDO">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="service_id" property="serviceId"/>
+        <result column="auth_key_id" property="authKeyId"/>
+        <result column="request_path" property="requestPath"/>
+        <result column="request_method" property="requestMethod"/>
+        <result column="client_ip" property="clientIp"/>
+        <result column="user_agent" property="userAgent"/>
+        <result column="status_code" property="statusCode"/>
+        <result column="response_time_ms" property="responseTimeMs"/>
+        <result column="error_message" property="errorMessage"/>
+        <result column="create_time" property="createTime"/>
+        <result column="deleted" property="deleted"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO mcp_api_call_logs
+            (user_id, service_id, auth_key_id, request_path, request_method,
+             client_ip, user_agent, status_code, response_time_ms, error_message)
+        VALUES
+            (#{userId}, #{serviceId}, #{authKeyId}, #{requestPath}, #{requestMethod},
+             #{clientIp}, #{userAgent}, #{statusCode}, #{responseTimeMs}, #{errorMessage})
+    </insert>
+
+    <insert id="insertSimpleLog">
+        INSERT INTO mcp_api_call_logs
+            (user_id, service_id, request_path, status_code, response_time_ms, client_ip)
+        VALUES
+            (#{userId}, #{serviceId}, #{requestPath}, #{statusCode}, #{responseTimeMs}, #{clientIp})
+    </insert>
+
+</mapper>

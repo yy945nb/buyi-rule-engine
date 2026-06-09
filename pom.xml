@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.5</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.ymware</groupId>
+    <artifactId>buyi-rule-engine</artifactId>
+    <packaging>pom</packaging>
+    <version>1.0-SNAPSHOT</version>
+
+    <modules>
+        <module>buyi-rule-engine-core</module>
+        <module>buyi-rule-engine-compute</module>
+        <module>buyi-rule-engine-web</module>
+        <module>buyi-gateway-sdk</module>
+        <module>buyi-gateway-mcp</module>
+        <module>buyi-gateway-app</module>
+    </modules>
+
+    <name>buyi-rule-engine</name>
+    <description>Rule Engine + AI Gateway Integrated Platform - JDK 21 / Spring Boot 3.5.5</description>
+
+    <properties>
+        <java.version>21</java.version>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- Unified version: 1.0-SNAPSHOT -->
+        <buyi.version>1.0-SNAPSHOT</buyi.version>
+
+        <!-- Spring Cloud -->
+        <spring-cloud.version>2024.0.3</spring-cloud.version>
+        <spring-cloud-alibaba.version>2023.0.3.2</spring-cloud-alibaba.version>
+
+        <!-- Database / ORM -->
+        <mybatis-plus.version>3.5.5</mybatis-plus.version>
+        <mybatis-spring-boot.version>3.0.3</mybatis-spring-boot.version>
+        <druid.version>1.2.21</druid.version>
+
+        <!-- Cache / MQ -->
+        <redisson.version>3.27.0</redisson.version>
+
+        <!-- Utilities -->
+        <hutool.version>5.8.26</hutool.version>
+        <lombok.version>1.18.46</lombok.version>
+        <fastjson.version>2.0.52</fastjson.version>
+        <aviator.version>5.4.3</aviator.version>
+        <guava.version>33.0.0-jre</guava.version>
+        <commons-lang3.version>3.14.0</commons-lang3.version>
+        <commons-collections4.version>4.4</commons-collections4.version>
+
+        <!-- API Doc -->
+        <springdoc.version>2.6.0</springdoc.version>
+
+        <!-- Code Gen -->
+        <mapstruct.version>1.5.5.Final</mapstruct.version>
+
+        <!-- Auth -->
+        <jjwt.version>0.12.6</jjwt.version>
+
+        <!-- Expression Engines -->
+        <graalvm-js.version>22.0.0.2</graalvm-js.version>
+
+        <!-- AI Gateway specific -->
+        <jtokkit.version>1.1.0</jtokkit.version>
+
+        <!-- Frontend build -->
+        <frontend-maven-plugin.version>1.15.1</frontend-maven-plugin.version>
+        <node.version>v20.11.0</node.version>
+        <npm.version>10.2.4</npm.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Spring Cloud BOM -->
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!-- Spring Cloud Alibaba BOM -->
+            <dependency>
+                <groupId>com.alibaba.cloud</groupId>
+                <artifactId>spring-cloud-alibaba-dependencies</artifactId>
+                <version>${spring-cloud-alibaba.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Internal modules: Rule Engine -->
+            <dependency>
+                <groupId>com.ymware.engine</groupId>
+                <artifactId>buyi-rule-engine-core</artifactId>
+                <version>${buyi.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.ymware.engine</groupId>
+                <artifactId>buyi-rule-engine-compute</artifactId>
+                <version>${buyi.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.ymware.engine</groupId>
+                <artifactId>buyi-rule-engine-web</artifactId>
+                <version>${buyi.version}</version>
+            </dependency>
+
+            <!-- Internal modules: Gateway -->
+            <dependency>
+                <groupId>com.ymware</groupId>
+                <artifactId>buyi-gateway-sdk</artifactId>
+                <version>${buyi.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.ymware</groupId>
+                <artifactId>buyi-gateway-mcp</artifactId>
+                <version>${buyi.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.ymware</groupId>
+                <artifactId>buyi-gateway-app</artifactId>
+                <version>${buyi.version}</version>
+            </dependency>
+
+            <!-- Commons -->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-collections4</artifactId>
+                <version>${commons-collections4.version}</version>
+            </dependency>
+
+            <!-- MyBatis (for gateway module) -->
+            <dependency>
+                <groupId>org.mybatis.spring.boot</groupId>
+                <artifactId>mybatis-spring-boot-starter</artifactId>
+                <version>${mybatis-spring-boot.version}</version>
+            </dependency>
+
+            <!-- JWT -->
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-api</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-impl</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-jackson</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+
+            <!-- SpringDoc -->
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                <version>${springdoc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
+                <version>${springdoc.version}</version>
+            </dependency>
+
+            <!-- JTokkit -->
+            <dependency>
+                <groupId>com.knuddels</groupId>
+                <artifactId>jtokkit</artifactId>
+                <version>${jtokkit.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <!-- Common dependencies for all modules -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <artifactId>maven-clean-plugin</artifactId>
+                    <version>3.3.2</version>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-resources-plugin</artifactId>
+                    <version>3.3.1</version>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.12.1</version>
+                    <configuration>
+                        <source>${java.version}</source>
+                        <target>${java.version}</target>
+                        <encoding>UTF-8</encoding>
+                        <annotationProcessorPaths>
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                                <version>${lombok.version}</version>
+                            </path>
+                            <path>
+                                <groupId>org.mapstruct</groupId>
+                                <artifactId>mapstruct-processor</artifactId>
+                                <version>${mapstruct.version}</version>
+                            </path>
+                        </annotationProcessorPaths>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.2.5</version>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>3.3.0</version>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-install-plugin</artifactId>
+                    <version>3.1.1</version>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-deploy-plugin</artifactId>
+                    <version>3.1.1</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+</project>

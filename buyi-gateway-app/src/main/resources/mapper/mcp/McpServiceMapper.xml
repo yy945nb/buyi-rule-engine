@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ymware.gateway.mcp.mapper.McpServiceMapper">
+
+    <resultMap id="BaseResultMap" type="com.ymware.gateway.mcp.model.McpServiceDO">
+        <id column="id" property="id"/>
+        <result column="service_id" property="serviceId"/>
+        <result column="name" property="name"/>
+        <result column="description" property="description"/>
+        <result column="endpoint" property="endpoint"/>
+        <result column="service_type" property="serviceType"/>
+        <result column="status" property="status"/>
+        <result column="max_qps" property="maxQps"/>
+        <result column="health_check_url" property="healthCheckUrl"/>
+        <result column="documentation" property="documentation"/>
+        <result column="nacos_service_id" property="nacosServiceId"/>
+        <result column="version_no" property="versionNo"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="deleted" property="deleted"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, service_id, name, description, endpoint, service_type, status, max_qps,
+        health_check_url, documentation, nacos_service_id, version_no, create_time, update_time, deleted
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO mcp_services (service_id, name, description, endpoint, service_type, status,
+                                  max_qps, health_check_url, documentation, nacos_service_id)
+        VALUES (#{serviceId}, #{name}, #{description}, #{endpoint}, #{serviceType}, #{status},
+                #{maxQps}, #{healthCheckUrl}, #{documentation}, #{nacosServiceId})
+    </insert>
+
+    <update id="update">
+        UPDATE mcp_services
+        SET name = #{name}, description = #{description}, endpoint = #{endpoint},
+            service_type = #{serviceType}, status = #{status}, max_qps = #{maxQps},
+            health_check_url = #{healthCheckUrl}, documentation = #{documentation},
+            nacos_service_id = #{nacosServiceId}, version_no = version_no + 1
+        WHERE id = #{id} AND version_no = #{versionNo} AND deleted = b'0'
+    </update>
+
+    <update id="deleteById">
+        UPDATE mcp_services SET deleted = b'1' WHERE id = #{id} AND deleted = b'0'
+    </update>
+
+    <select id="findById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM mcp_services WHERE id = #{id} AND deleted = b'0'
+    </select>
+
+    <select id="findByServiceId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM mcp_services WHERE service_id = #{serviceId} AND deleted = b'0'
+    </select>
+
+    <select id="findByStatus" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM mcp_services WHERE status = #{status} AND deleted = b'0'
+    </select>
+
+    <select id="findByNacosServiceId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM mcp_services WHERE nacos_service_id = #{nacosServiceId} AND deleted = b'0'
+    </select>
+
+    <select id="findByConditions" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM mcp_services
+        WHERE deleted = b'0'
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        <if test="name != null and name != ''">
+            AND name LIKE CONCAT('%', #{name}, '%')
+        </if>
+        ORDER BY create_time DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countByConditions" resultType="int">
+        SELECT COUNT(1)
+        FROM mcp_services
+        WHERE deleted = b'0'
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        <if test="name != null and name != ''">
+            AND name LIKE CONCAT('%', #{name}, '%')
+        </if>
+    </select>
+
+    <select id="findAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM mcp_services WHERE deleted = b'0'
+    </select>
+
+</mapper>
