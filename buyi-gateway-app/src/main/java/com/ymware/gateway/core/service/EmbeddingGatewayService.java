@@ -1,7 +1,7 @@
 package com.ymware.gateway.core.service;
 
 import com.ymware.gateway.core.capability.CapabilityChecker;
-import com.ymware.gateway.core.protocol.ProtocolAdapter;
+import com.ymware.gateway.core.protocol.SseProtocolAdapter;
 import com.ymware.gateway.core.resilience.FailoverStrategy;
 import com.ymware.gateway.core.router.ModelRouter;
 import com.ymware.gateway.core.stats.ActiveRequestTracker;
@@ -27,7 +27,7 @@ public class EmbeddingGatewayService extends AbstractGatewayService {
               requestStatsCollector, failoverStrategy, activeRequestTracker);
     }
 
-    public Mono<?> embeddingWithStats(Object rawRequest, ProtocolAdapter adapter, RequestStatsContext context) {
+    public Mono<?> embeddingWithStats(Object rawRequest, SseProtocolAdapter adapter, RequestStatsContext context) {
         return executeNonStreaming(rawRequest, adapter, context, ProviderClient::embedding);
     }
 }

@@ -20,7 +20,7 @@ spring:
     type: com.alibaba.druid.pool.DruidDataSource
     url: ${engine.datasource.url:jdbc:mysql://localhost:3306/rule_engine_open?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8}
     username: ${engine.datasource.username:root}
-    password: ${engine.datasource.password:password}
+    password: ${MYSQL_PASSWORD:password}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       # 最大连接池数量
@@ -55,8 +55,8 @@ spring:
   expression:
     server:
       enable-login: true
-      username: admin
-      password: admin@123
+      username: ${RULE_ENGINE_ADMIN_USERNAME:admin}
+      password: ${RULE_ENGINE_ADMIN_PASSWORD:admin@123}
 mybatis-plus:
   mapper-locations: mapper/**/*.xml
   #  需要SQL日志时开启

@@ -3,18 +3,12 @@ package com.ymware.engine.domain.workflow.model;
 import com.ymware.engine.domain.workflow.event.*;
 import com.ymware.engine.domain.workflow.listener.*;
 import com.ymware.engine.domain.value.model.Parameter;
-import com.ymware.engine.domain.workflow.exception.ChainException;
 import com.ymware.engine.domain.workflow.type.*;
 import com.ymware.engine.workflow.tools.NamedThreadPools;
-import cn.hutool.core.exceptions.ExceptionUtil;
-import cn.hutool.core.text.StrFormatter;
-import cn.hutool.json.JSONUtil;
 import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.stream.Collectors;
 
 /**
  * 链类 - 继承自ChainNode，直接集成执行逻辑
@@ -23,7 +17,6 @@ import java.util.stream.Collectors;
  * @author <a href="mailto:boommanpro@gmail.com">boommanpro</a>
  * @date 2025/08/22
  */
-@Slf4j
 @Getter
 public class Chain extends ChainNode {
 
@@ -36,37 +29,51 @@ public class Chain extends ChainNode {
     // 执行相关属性
     private Map<String, Object> executeResult = null;
     private Map<String, Object> outputResult;
-    private Map<String, Object> memory = new HashMap<>();
+    private final Map<String, Object> memory = new ConcurrentHashMap<>();
     private ChainStatus chainStatus = ChainStatus.READY;
     private Exception exception;
     private String message;
 
-    // 事件监听器管理
-    private Map<Class<?>, List<ChainEventListener>> eventListeners = new HashMap<>();
-    private List<ChainOutputListener> outputListeners = new CopyOnWriteArrayList<>();
-    private List<ChainErrorListener> chainErrorListeners = new CopyOnWriteArrayList<>();
-    private List<NodeErrorListener> nodeErrorListeners = new CopyOnWriteArrayList<>();
-    private List<ChainSuspendListener> suspendListeners = new CopyOnWriteArrayList<>();
+    // 事件总线 - 统一管理所有监听器和事件通知
+    @Getter
+    private final ChainEventBus eventBus = new ChainEventBus();
 
     // 异步执行相关
     private ExecutorService asyncNodeExecutors = NamedThreadPools.newFixedThreadPool("chain-executor");
     private Phaser phaser = new Phaser(1);
-    private Map<String, NodeContext> nodeContexts = new ConcurrentHashMap<>();
-    private Map<String, ChainNode> suspendNodes = new ConcurrentHashMap<>();
+    private final Map<String, NodeContext> nodeContexts = new ConcurrentHashMap<>();
+    private final Map<String, ChainNode> suspendNodes = new ConcurrentHashMap<>();
     private List<Parameter> suspendForParameters;
 
     // 节点执行信息映射
     private final Map<String, ChainNodeExecuteInfo> executeInfoMap = new ConcurrentHashMap<>();
 
     // 异步执行相关字段
-    private List<ChainExecutionListener> listeners = new ArrayList<>();
     private ScheduledExecutorService progressUpdateExecutor = Executors.newSingleThreadScheduledExecutor();
     private volatile boolean asyncExecutionCompleted = false;
     private CompletableFuture<Map<String, Object>> asyncExecutionFuture;
 
+    // 节点索引 - O(1) 查找
+    private final Map<String, ChainNode> nodeIndex = new ConcurrentHashMap<>();
+
+    // 执行器 - 延迟初始化，支持子类钩子
+    private ChainExecutor executor;
+
     public Chain() {
         this.id = UUID.randomUUID().toString();
-        this.nodeType = NodeTypeEnum.CHAIN;
+        this.nodeType = NodeType.CHAIN;
+    }
+
+    private ChainExecutor getExecutor() {
+        if (executor == null) {
+            executor = new ChainExecutor(this, new ChainExecutionHooks() {
+                @Override public void onNodeExecuteBefore(NodeContext ctx) { Chain.this.onNodeExecuteBefore(ctx); }
+                @Override public void onNodeExecuteStart(NodeContext ctx) { Chain.this.onNodeExecuteStart(ctx); }
+                @Override public void onNodeExecuteEnd(NodeContext ctx) { Chain.this.onNodeExecuteEnd(ctx); }
+                @Override public void onNodeExecuteAfter(NodeContext ctx) { Chain.this.onNodeExecuteAfter(ctx); }
+            });
+        }
+        return executor;
     }
 
     // ==================== 节点管理 ====================
@@ -77,7 +84,7 @@ public class Chain extends ChainNode {
         }
 
         if (node instanceof ChainEventListener) {
-            addEventListener((ChainEventListener) node);
+            eventBus.addEventListener((ChainEventListener) node);
         }
 
         if (node.getId() == null) {
@@ -86,10 +93,12 @@ public class Chain extends ChainNode {
 
         if (node instanceof Chain) {
             ((Chain) node).parent = this;
+            ((Chain) node).eventBus.setParent(this);
             addChild((Chain) node);
         }
 
         nodes.add(node);
+        nodeIndex.put(node.getId(), node);
         return nodes;
     }
 
@@ -123,134 +132,73 @@ public class Chain extends ChainNode {
         return edges;
     }
 
-    // ==================== 事件监听器管理 ====================
+    // ==================== 事件监听器管理 (委托给 eventBus) ====================
 
-    public synchronized void addEventListener(Class<? extends ChainEvent> eventClass, ChainEventListener listener) {
-        List<ChainEventListener> chainEventListeners = eventListeners.computeIfAbsent(eventClass, k -> new ArrayList<>());
-        chainEventListeners.add(listener);
+    public void addEventListener(Class<? extends ChainEvent> eventClass, ChainEventListener listener) {
+        eventBus.addEventListener(eventClass, listener);
     }
 
-    public synchronized void addEventListener(ChainEventListener listener) {
-        List<ChainEventListener> chainEventListeners = eventListeners.computeIfAbsent(ChainEvent.class, k -> new ArrayList<>());
-        chainEventListeners.add(listener);
+    public void addEventListener(ChainEventListener listener) {
+        eventBus.addEventListener(listener);
     }
 
-    public synchronized void removeEventListener(ChainEventListener listener) {
-        for (List<ChainEventListener> list : eventListeners.values()) {
-            list.removeIf(item -> item == listener);
-        }
+    public void removeEventListener(ChainEventListener listener) {
+        eventBus.removeEventListener(listener);
     }
 
-    public synchronized void removeEventListener(Class<? extends ChainEvent> eventClass, ChainEventListener listener) {
-        List<ChainEventListener> list = eventListeners.get(eventClass);
-        if (list != null && !list.isEmpty()) {
-            list.removeIf(item -> item == listener);
-        }
+    public void removeEventListener(Class<? extends ChainEvent> eventClass, ChainEventListener listener) {
+        eventBus.removeEventListener(eventClass, listener);
     }
 
-    public synchronized void addErrorListener(ChainErrorListener listener) {
-        this.chainErrorListeners.add(listener);
+    public void addErrorListener(ChainErrorListener listener) {
+        eventBus.addErrorListener(listener);
     }
 
-    public synchronized void removeErrorListener(ChainErrorListener listener) {
-        this.chainErrorListeners.remove(listener);
+    public void removeErrorListener(ChainErrorListener listener) {
+        eventBus.removeErrorListener(listener);
     }
 
-    public synchronized void addNodeErrorListener(NodeErrorListener listener) {
-        this.nodeErrorListeners.add(listener);
+    public void addNodeErrorListener(NodeErrorListener listener) {
+        eventBus.addNodeErrorListener(listener);
     }
 
-    public synchronized void removeNodeErrorListener(NodeErrorListener listener) {
-        this.nodeErrorListeners.remove(listener);
+    public void removeNodeErrorListener(NodeErrorListener listener) {
+        eventBus.removeNodeErrorListener(listener);
     }
 
-    public synchronized void addSuspendListener(ChainSuspendListener listener) {
-        this.suspendListeners.add(listener);
+    public void addSuspendListener(ChainSuspendListener listener) {
+        eventBus.addSuspendListener(listener);
     }
 
-    public synchronized void removeSuspendListener(ChainSuspendListener listener) {
-        this.suspendListeners.remove(listener);
+    public void removeSuspendListener(ChainSuspendListener listener) {
+        eventBus.removeSuspendListener(listener);
     }
 
     public void addOutputListener(ChainOutputListener outputListener) {
-        if (this.outputListeners == null) {
-            this.outputListeners = new CopyOnWriteArrayList<>();
-        }
-        this.outputListeners.add(outputListener);
+        eventBus.addOutputListener(outputListener);
     }
 
-    // ==================== 事件通知 ====================
-
-    public void notifyEvent(ChainEvent event) {
-        for (Map.Entry<Class<?>, List<ChainEventListener>> entry : eventListeners.entrySet()) {
-            if (entry.getKey().isInstance(event)) {
-                for (ChainEventListener chainEventListener : entry.getValue()) {
-                    try {
-                        chainEventListener.onEvent(event);
-                    } catch (Exception e) {
-                        log.warn("事件监听器通知异常", e);
-                    }
-                }
-            }
-        }
-        if (parent != null) parent.notifyEvent(event);
+    public void addListener(ChainExecutionListener listener) {
+        eventBus.addExecutionListener(listener);
     }
 
-    private void notifyOutput(ChainNode node, Object response) {
-        for (ChainOutputListener inputListener : outputListeners) {
-            try {
-                inputListener.onOutput(this, node, response);
-            } catch (Exception e) {
-                log.warn("输出监听器通知异常", e);
-            }
-        }
-        if (parent != null) parent.notifyOutput(node, response);
+    public void removeListener(ChainExecutionListener listener) {
+        eventBus.removeExecutionListener(listener);
     }
 
-    private void notifySuspend() {
-        for (ChainSuspendListener suspendListener : suspendListeners) {
-            try {
-                suspendListener.onSuspend(this);
-            } catch (Exception e) {
-                log.warn("暂停监听器通知异常", e);
-            }
-        }
-        if (parent != null) parent.notifySuspend();
-    }
-
-    private void notifyError(Throwable error) {
-        for (ChainErrorListener errorListener : chainErrorListeners) {
-            try {
-                errorListener.onError(error, this);
-            } catch (Exception e) {
-                log.warn("错误监听器通知异常", e);
-            }
-        }
-        if (parent != null) parent.notifyError(error);
-    }
-
-    private void notifyNodeError(Throwable error, ChainNode node, Map<String, Object> executeResult) {
-        for (NodeErrorListener errorListener : nodeErrorListeners) {
-            try {
-                errorListener.onError(error, node, executeResult, this);
-            } catch (Exception e) {
-                log.warn("节点错误监听器通知异常", e);
-            }
-        }
-        if (parent != null) parent.notifyNodeError(error, node, executeResult);
-    }
-
-    // ==================== 执行逻辑 ====================
+    // ==================== 执行逻辑（委托给 ChainExecutor） ====================
 
     @Override
     public Map<String, Object> execute(Chain parent) {
         return executeForResult(parent.getMemory());
     }
 
+    protected void executeInternal() {
+        getExecutor().executeInternal();
+    }
+
     public void execute(Map<String, Object> variables) {
-        runInLifeCycle(variables,
-                new ChainStartEvent(this, variables),
-                this::executeInternal);
+        getExecutor().execute(variables);
     }
 
     public Map<String, Object> executeForResult(Map<String, Object> variables) {
@@ -258,34 +206,27 @@ public class Chain extends ChainNode {
     }
 
     public Map<String, Object> executeForResult(Map<String, Object> variables, boolean ignoreError) {
-        if (this.chainStatus == ChainStatus.SUSPEND) {
-            this.resume(variables);
-        } else {
-            runInLifeCycle(variables, new ChainStartEvent(this, variables), this::executeInternal);
-        }
+        return getExecutor().executeForResult(variables, ignoreError);
+    }
 
-        if (!ignoreError) {
-            if (this.chainStatus == ChainStatus.FINISHED_ABNORMAL) {
-                if (this.exception != null) {
-                    if (this.exception instanceof RuntimeException) {
-                        throw (RuntimeException) this.exception;
-                    } else {
-                        throw new ChainException(this.exception);
-                    }
-                } else {
-                    if (this.message == null) this.message = "Chain execute error";
-                    throw new ChainException(this.message);
-                }
-            }
-        }
-
-        return this.outputResult;
+    public CompletableFuture<Map<String, Object>> executeAsync(Map<String, Object> variables) {
+        return getExecutor().executeAsync(variables);
     }
 
     @Override
     public List<Parameter> getParameters() {
-        List<ChainNode> startNodes = this.getStartNodes();
-        if (startNodes == null || startNodes.isEmpty()) {
+        if (this.nodes == null || this.nodes.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<ChainNode> startNodes = new ArrayList<>();
+        for (ChainNode node : this.nodes) {
+            if (node.getInwardEdges() == null || node.getInwardEdges().isEmpty()) {
+                startNodes.add(node);
+            }
+        }
+
+        if (startNodes.isEmpty()) {
             return Collections.emptyList();
         }
 
@@ -297,266 +238,7 @@ public class Chain extends ChainNode {
         return parameters;
     }
 
-    protected void executeInternal() {
-        List<ChainNode> currentNodes = getStartNodes();
-        if (currentNodes == null || currentNodes.isEmpty()) {
-            return;
-        }
-
-        List<ExecuteNode> executeNodes = new ArrayList<>();
-        for (ChainNode currentNode : currentNodes) {
-            executeNodes.add(new ExecuteNode(currentNode, null, ""));
-        }
-
-        doExecuteNodes(executeNodes);
-    }
-
-    protected void doExecuteNodes(List<ExecuteNode> executeNodes) {
-        for (ExecuteNode executeNode : executeNodes) {
-            ChainNode currentNode = executeNode.currentNode;
-            if (currentNode.isAsync()) {
-                phaser.register();
-                asyncNodeExecutors.execute(() -> {
-                    try {
-                        doExecuteNode(executeNode);
-                    } finally {
-                        phaser.arriveAndDeregister();
-                    }
-                });
-            } else {
-                doExecuteNode(executeNode);
-            }
-        }
-    }
-
-    protected void doExecuteNode(ExecuteNode executeNode) {
-        doExecuteNodeInternal(executeNode.currentNode, false);
-    }
-
-    /**
-     * 统一的节点执行内部方法
-     *
-     * @param chainNode 节点
-     * @param isAsync   是否异步执行
-     */
-    private void doExecuteNodeInternal(ChainNode chainNode, boolean isAsync) {
-        synchronized (chainNode) {
-            updateCurrentNodeStatus(chainNode);
-            ChainNodeExecuteInfo chainNodeExecuteInfo = executeInfoMap.get(chainNode.getId());
-            chainNode.setStatus(chainNodeExecuteInfo.getStatus());
-
-
-            if (chainNode.getStatus() == ChainNodeStatus.WAIT) {
-                return;
-            }
-            chainNodeExecuteInfo.trigger();
-            // 异步模式下通知节点状态变化
-            if (isAsync) {
-                notifyNodeStatusChanged(chainNode.getId(), chainNodeExecuteInfo);
-            }
-
-            chainNodeExecuteInfo.setStartTime(System.currentTimeMillis());
-            chainNodeExecuteInfo.setInwardEdges(chainNode.getInwardEdges().stream()
-                    .filter(chainEdge -> chainEdge.getStatus() == ChainEdgeStatus.TRUE)
-                    .map(ChainEdge::getId)
-                    .collect(Collectors.toList()));
-
-            if (chainNodeExecuteInfo.getStatus() == ChainNodeStatus.READY) {
-                Map<String, Object> executeResult = null;
-                NodeContext nodeContext = getNodeContext(chainNode);
-
-                try {
-                    // 调用节点执行前的钩子方法
-                    onNodeExecuteBefore(nodeContext);
-
-                    chainNodeExecuteInfo.setInputsResult(JSONUtil.toJsonStr(chainNode.getParametersData(this)));
-
-                    // 通知节点开始执行事件
-                    notifyEvent(new NodeStartEvent(this, chainNode));
-                    if (this.getChainStatus() != ChainStatus.RUNNING) {
-                        return;
-                    }
-
-                    // 设置节点状态为运行中
-                    chainNode.setStatus(ChainNodeStatus.RUNNING);
-                    chainNodeExecuteInfo.setStatus(ChainNodeStatus.RUNNING);
-
-                    if (isAsync) {
-                        notifyNodeStatusChanged(chainNode.getId(), chainNodeExecuteInfo);
-                    }
-
-                    // 调用节点执行开始的钩子方法
-                    onNodeExecuteStart(nodeContext);
-
-                    executeResult = chainNode.execute(this);
-                    chainNodeExecuteInfo.setExecuteResult(JSONUtil.toJsonStr(executeResult));
-
-                    List<Parameter> outputParameters = chainNode.getOutputParameters();
-                    Map<String, Object> outputResult = parseOutputResult(outputParameters, executeResult);
-                    chainNodeExecuteInfo.setOutputResult(JSONUtil.toJsonStr(outputResult));
-
-                    if (!outputResult.isEmpty()) {
-                        getMemory().put(chainNode.getId(), new HashMap<>(outputResult));
-                    }
-
-                    chainNode.setStatus(ChainNodeStatus.FINISHED);
-                    this.executeResult = executeResult;
-                    this.outputResult = outputResult;
-
-                    // 通知输出
-                    if (outputResult != null && !outputResult.isEmpty()) {
-                        notifyOutput(chainNode, outputResult);
-                    }
-
-                    // 调用节点执行结束的钩子方法
-                    onNodeExecuteEnd(nodeContext);
-
-                } catch (Throwable error) {
-                    chainNode.setStatus(ChainNodeStatus.FAILED);
-                    log.error("exec {} node {}, error:", chainNode.getNodeType(), chainNode.getId(), error);
-                    chainNodeExecuteInfo.setStatus(ChainNodeStatus.FAILED);
-                    chainNodeExecuteInfo.setExecuteResult(StrFormatter.format("exec {} node {}, error:", chainNode.getNodeType(), chainNode.getId(), error.getMessage()));
-                    chainNodeExecuteInfo.setException(ExceptionUtil.stacktraceToString(error));
-                    this.chainStatus = ChainStatus.FINISHED_ABNORMAL;
-
-                    // 通知节点错误
-                    notifyNodeError(error, chainNode, executeResult);
-                } finally {
-                    // 通知节点结束执行事件
-                    onNodeExecuteEnd(nodeContext);
-                }
-            }
-
-            chainNodeExecuteInfo.setStatus(chainNode.getStatus());
-            chainNodeExecuteInfo.setEndTime(System.currentTimeMillis());
-
-            // 异步模式下再次通知节点状态变化
-            if (isAsync) {
-                notifyNodeStatusChanged(chainNode.getId(), chainNodeExecuteInfo);
-            }
-
-            // 调用节点执行后的钩子方法
-            NodeContext nodeContext = getNodeContext(chainNode);
-            onNodeExecuteAfter(nodeContext);
-
-            // 处理后续节点
-            processSubsequentNodes(chainNode,chainNodeExecuteInfo, isAsync);
-        }
-    }
-
-    /**
-     * 处理后续节点
-     *
-     * @param chainNode            当前节点
-     * @param chainNodeExecuteInfo
-     * @param isAsync              是否异步执行
-     */
-    private void processSubsequentNodes(ChainNode chainNode, ChainNodeExecuteInfo chainNodeExecuteInfo, boolean isAsync) {
-        if (chainNode.getStatus() == ChainNodeStatus.FINISHED) {
-            for (ChainEdge outwardEdge : chainNode.getOutwardEdges()) {
-                EdgeCondition condition = outwardEdge.getCondition();
-                if (condition == null) {
-                    outwardEdge.setStatus(ChainEdgeStatus.TRUE);
-                    executeNextNode(outwardEdge.getTarget(), isAsync);
-                    continue;
-                }
-                if (condition.check(this, outwardEdge)) {
-                    outwardEdge.setStatus(ChainEdgeStatus.TRUE);
-                    chainNodeExecuteInfo.setBranch(outwardEdge.getSourcePortID());
-                    if (isAsync) {
-                        notifyNodeStatusChanged(chainNode.getId(), chainNodeExecuteInfo);
-                    }
-                    executeNextNode(outwardEdge.getTarget(), isAsync);
-                } else {
-                    outwardEdge.setStatus(ChainEdgeStatus.FALSE);
-                    executeNextNode(outwardEdge.getTarget(), isAsync);
-                }
-            }
-        } else if (chainNode.getStatus() == ChainNodeStatus.SKIPPED) {
-            for (ChainEdge outwardEdge : chainNode.getOutwardEdges()) {
-                outwardEdge.setStatus(ChainEdgeStatus.SKIPPED);
-                executeNextNode(outwardEdge.getTarget(), isAsync);
-            }
-        }
-    }
-
-    /**
-     * 执行下一个节点
-     *
-     * @param targetNodeId 目标节点ID
-     * @param isAsync      是否异步执行
-     */
-    private void executeNextNode(String targetNodeId, boolean isAsync) {
-        ChainNode targetNode = getNodeById(targetNodeId);
-        doExecuteNodeInternal(targetNode, true);
-    }
-
-    /**
-     * 执行后续节点（可能有多个）
-     */
-    private void doExecuteNextNodes(ChainNode currentNode, Map<String, Object> executeResult) {
-        List<ChainEdge> outwardEdges = currentNode.getOutwardEdges();
-        if (outwardEdges != null && !outwardEdges.isEmpty()) {
-            List<ExecuteNode> nextExecuteNodes = new ArrayList<>(outwardEdges.size());
-            for (ChainEdge chainEdge : outwardEdges) {
-                ChainNode nextNode = getNodeById(chainEdge.getTarget());
-                if (nextNode == null) {
-                    continue;
-                }
-                // 这里需要实现EdgeCondition的检查逻辑
-                nextExecuteNodes.add(new ExecuteNode(nextNode, currentNode, chainEdge.getId()));
-            }
-            doExecuteNodes(nextExecuteNodes);
-        }
-    }
-
     // ==================== 辅助方法 ====================
-
-    private void updateCurrentNodeStatus(ChainNode chainNode) {
-        ChainDepStatus chainDepStatus = ChainDepStatus.calcChainNodeDep(chainNode);
-        ChainNodeExecuteInfo chainNodeExecuteInfo = executeInfoMap.computeIfAbsent(chainNode.getId(), id -> {
-            ChainNodeExecuteInfo info = new ChainNodeExecuteInfo();
-            info.setId(id);
-            info.setType(chainNode.getNodeType());
-            info.setExecuteInfoId(id + "_" + System.currentTimeMillis() + "_" + id.hashCode());
-            return info;
-        });
-        chainNodeExecuteInfo.setStatus(ChainNodeStatus.fromChainDepStatus(chainDepStatus));
-    }
-
-    private Map<String, Object> parseOutputResult(List<Parameter> outputParameters, Map<String, Object> execute) {
-        if (outputParameters == null) {
-            return execute;
-        }
-        Map<String, Object> result = new HashMap<>();
-        List<String> validParameters = new ArrayList<>();
-        for (Parameter parameter : outputParameters) {
-            Object value = null;
-            if (parameter.getRefType() == RefType.REF) {
-                List<String> refValue = parameter.getRefValue();
-                if (refValue.size() >= 2) {
-                    Object nodeResult = execute.get(refValue.get(0));
-                    if (nodeResult instanceof Map) {
-                        Map<String, Object> nodeResultMap = (Map<String, Object>) nodeResult;
-                        value = nodeResultMap.get(refValue.get(1));
-                    }
-                } else {
-                    value = execute.getOrDefault(String.join(".", parameter.getRefValue()), parameter.getDefaultValue());
-                }
-            } else {
-                value = parameter.getDefaultValue();
-            }
-            if (parameter.isRequire() && value == null) {
-                validParameters.add("参数 " + parameter.getName() + " 缺失");
-            }
-            result.put(parameter.getName(), value);
-        }
-        if (!validParameters.isEmpty()) {
-            throw new RuntimeException("参数验证失败：" + String.join(",", validParameters));
-        }
-
-        return result;
-    }
 
     public NodeContext getNodeContext(ChainNode chainNode) {
         return nodeContexts.computeIfAbsent(chainNode.getId(), k -> new NodeContext());
@@ -577,74 +259,12 @@ public class Chain extends ChainNode {
         return result;
     }
 
-    private List<ChainNode> getStartNodes() {
-        if (this.nodes == null || this.nodes.isEmpty()) {
-            return null;
-        }
-
-        if (!this.suspendNodes.isEmpty()) {
-            return new ArrayList<>(suspendNodes.values());
-        }
-
-        List<ChainNode> nodes = new ArrayList<>();
-
-        for (ChainNode node : this.nodes) {
-            if (node.getInwardEdges() == null || node.getInwardEdges().isEmpty()) {
-                nodes.add(node);
-            }
-        }
-        return nodes;
-    }
-
-    private ChainNode getNodeById(String id) {
-        if (id == null || id.trim().isEmpty()) {
-            return null;
-        }
-
-        for (ChainNode node : this.nodes) {
-            if (id.equals(node.getId())) {
-                return node;
-            }
-        }
-
-        return null;
-    }
-
-    protected void runInLifeCycle(Map<String, Object> variables, ChainEvent startEvent, Runnable runnable) {
-        if (variables != null) {
-            this.memory.putAll(variables);
-        }
-        try {
-            notifyEvent(startEvent);
-            try {
-                setStatusAndNotifyEvent(ChainStatus.RUNNING);
-                runnable.run();
-            } catch (Exception e) {
-                log.error("error:", e);
-                this.exception = e;
-                setStatusAndNotifyEvent(ChainStatus.ERROR);
-                notifyError(e);
-            }
-
-            this.phaser.arriveAndAwaitAdvance();
-
-            if (chainStatus == ChainStatus.RUNNING) {
-                setStatusAndNotifyEvent(ChainStatus.FINISHED_NORMAL);
-            } else if (chainStatus == ChainStatus.ERROR) {
-                setStatusAndNotifyEvent(ChainStatus.FINISHED_ABNORMAL);
-            }
-
-        } finally {
-            notifyEvent(new ChainEndEvent(this));
-        }
-    }
-
     public void setStatusAndNotifyEvent(ChainStatus status) {
         ChainStatus before = this.chainStatus;
         this.chainStatus = status;
 
         if (before != status) {
-            notifyEvent(new ChainStatusChangeEvent(this, this.chainStatus, before));
+            eventBus.notifyEvent(new ChainStatusChangeEvent(this, this.chainStatus, before));
         }
     }
 
@@ -675,7 +295,7 @@ public class Chain extends ChainNode {
     }
 
     public void output(ChainNode node, Object response) {
-        notifyOutput(node, response);
+        eventBus.notifyOutput(this, node, response);
     }
 
     public void suspend(ChainNode node) {
@@ -687,9 +307,7 @@ public class Chain extends ChainNode {
     }
 
     public void resume(Map<String, Object> variables) {
-        runInLifeCycle(variables,
-                new ChainStartEvent(this, variables),
-                this::executeInternal);
+        getExecutor().execute(variables);
     }
 
     public void reset() {
@@ -700,6 +318,7 @@ public class Chain extends ChainNode {
         // chain
         this.chainStatus = ChainStatus.READY;
         this.executeResult = null;
+        this.outputResult = null;
         this.message = null;
         this.exception = null;
         this.nodeContexts.clear();
@@ -713,6 +332,7 @@ public class Chain extends ChainNode {
         }
 
         this.phaser = new Phaser(1);
+        this.executor = null;
     }
 
     // ==================== 内部类 ====================
@@ -751,8 +371,15 @@ public class Chain extends ChainNode {
         this.executeResult = executeResult;
     }
 
+    public void setOutputResult(Map<String, Object> outputResult) {
+        this.outputResult = outputResult;
+    }
+
     public void setMemory(Map<String, Object> memory) {
-        this.memory = memory;
+        this.memory.clear();
+        if (memory != null) {
+            this.memory.putAll(memory);
+        }
     }
 
     public void setStatus(ChainStatus status) {
@@ -792,26 +419,6 @@ public class Chain extends ChainNode {
         this.message = message;
     }
 
-    public void setEventListeners(Map<Class<?>, List<ChainEventListener>> eventListeners) {
-        this.eventListeners = eventListeners;
-    }
-
-    public void setOutputListeners(List<ChainOutputListener> outputListeners) {
-        this.outputListeners = outputListeners;
-    }
-
-    public void setChainErrorListeners(List<ChainErrorListener> chainErrorListeners) {
-        this.chainErrorListeners = chainErrorListeners;
-    }
-
-    public void setNodeErrorListeners(List<NodeErrorListener> nodeErrorListeners) {
-        this.nodeErrorListeners = nodeErrorListeners;
-    }
-
-    public void setSuspendListeners(List<ChainSuspendListener> suspendListeners) {
-        this.suspendListeners = suspendListeners;
-    }
-
     public void setAsyncNodeExecutors(ExecutorService asyncNodeExecutors) {
         this.asyncNodeExecutors = asyncNodeExecutors;
     }
@@ -821,15 +428,33 @@ public class Chain extends ChainNode {
     }
 
     public void setNodeContexts(Map<String, NodeContext> nodeContexts) {
-        this.nodeContexts = nodeContexts;
+        this.nodeContexts.clear();
+        if (nodeContexts != null) {
+            this.nodeContexts.putAll(nodeContexts);
+        }
     }
 
     public void setSuspendNodes(Map<String, ChainNode> suspendNodes) {
-        this.suspendNodes = suspendNodes;
+        this.suspendNodes.clear();
+        if (suspendNodes != null) {
+            this.suspendNodes.putAll(suspendNodes);
+        }
     }
 
     public void setSuspendForParameters(List<Parameter> suspendForParameters) {
         this.suspendForParameters = suspendForParameters;
+    }
+
+    public void setChainStatus(ChainStatus chainStatus) {
+        this.chainStatus = chainStatus;
+    }
+
+    public void setAsyncExecutionCompleted(boolean asyncExecutionCompleted) {
+        this.asyncExecutionCompleted = asyncExecutionCompleted;
+    }
+
+    public void setAsyncExecutionFuture(CompletableFuture<Map<String, Object>> asyncExecutionFuture) {
+        this.asyncExecutionFuture = asyncExecutionFuture;
     }
 
     public void addSuspendForParameter(Parameter suspendForParameter) {
@@ -837,235 +462,6 @@ public class Chain extends ChainNode {
             this.suspendForParameters = new ArrayList<>();
         }
         this.suspendForParameters.add(suspendForParameter);
-    }
-
-    /**
-     * 添加执行监听器
-     *
-     * @param listener 监听器
-     */
-    public void addListener(ChainExecutionListener listener) {
-        if (listener != null && !listeners.contains(listener)) {
-            listeners.add(listener);
-        }
-    }
-
-    /**
-     * 移除执行监听器
-     *
-     * @param listener 监听器
-     */
-    public void removeListener(ChainExecutionListener listener) {
-        listeners.remove(listener);
-    }
-
-    /**
-     * 异步执行工作流（非阻塞）
-     * 支持实时状态更新和进度监听
-     *
-     * @param variables 输入变量
-     * @return CompletableFuture 执行结果
-     */
-    public CompletableFuture<Map<String, Object>> executeAsync(Map<String, Object> variables) {
-        if (asyncExecutionFuture != null && !asyncExecutionFuture.isDone()) {
-            return asyncExecutionFuture;
-        }
-
-        asyncExecutionCompleted = false;
-        chainStatus = ChainStatus.RUNNING;
-
-        if (variables != null) {
-            this.memory.putAll(variables);
-        }
-
-        asyncExecutionFuture = CompletableFuture.supplyAsync(() -> {
-            try {
-                // 通知监听器执行开始
-                notifyExecutionStart();
-
-                // 启动进度更新定时器
-                ScheduledFuture<?> progressUpdateTask = startProgressUpdateTask();
-
-                // 执行工作流核心逻辑
-                List<ChainNode> startNodes = getStartNodes();
-                if (startNodes != null && !startNodes.isEmpty()) {
-                    doExecuteChainNodesAsync(startNodes);
-                }
-
-                // 等待所有节点完成
-                waitForCompletion();
-
-                // 停止进度更新
-                progressUpdateTask.cancel(false);
-
-                // 检查执行结果
-                if (chainStatus == ChainStatus.FINISHED_ABNORMAL) {
-                    Exception executionException = this.exception;
-                    if (executionException != null) {
-                        notifyExecutionComplete(null, executionException);
-                        if (executionException instanceof RuntimeException) {
-                            throw (RuntimeException) executionException;
-                        } else {
-                            throw new ChainException(executionException);
-                        }
-                    } else {
-                        String errorMsg = this.message != null ? this.message : "Chain execute error";
-                        notifyExecutionComplete(null, new ChainException(errorMsg));
-                        throw new ChainException(errorMsg);
-                    }
-                }
-
-                asyncExecutionCompleted = true;
-                chainStatus = ChainStatus.FINISHED_NORMAL;
-                notifyExecutionComplete(outputResult, null);
-
-                return outputResult;
-
-            } catch (Exception e) {
-                chainStatus = ChainStatus.FINISHED_ABNORMAL;
-                this.exception = e;
-                notifyExecutionComplete(null, e);
-                throw e;
-            }
-        }, asyncNodeExecutors);
-
-        return asyncExecutionFuture;
-    }
-
-    /**
-     * 启动进度更新定时任务
-     *
-     * @return ScheduledFuture
-     */
-    private ScheduledFuture<?> startProgressUpdateTask() {
-        return progressUpdateExecutor.scheduleAtFixedRate(() -> {
-            if (!asyncExecutionCompleted) {
-                try {
-                    int totalNodes = nodes != null ? nodes.size() : 0;
-                    int completedNodes = 0;
-
-                    if (executeInfoMap != null) {
-                        completedNodes = (int) executeInfoMap.values().stream()
-                                .filter(info -> info.getStatus() == ChainNodeStatus.FINISHED ||
-                                        info.getStatus() == ChainNodeStatus.FAILED ||
-                                        info.getStatus() == ChainNodeStatus.SKIPPED)
-                                .count();
-                    }
-
-                    notifyProgressUpdate(completedNodes, totalNodes);
-                } catch (Exception e) {
-                    log.warn("进度更新异常", e);
-                }
-            }
-        }, 100, 100, TimeUnit.MILLISECONDS); // 每100ms更新一次
-    }
-
-    /**
-     * 等待工作流执行完成
-     */
-    private void waitForCompletion() {
-        while (!asyncExecutionCompleted && chainStatus != ChainStatus.FINISHED_ABNORMAL) {
-            try {
-                // 检查是否所有节点都已完成
-                boolean allCompleted = true;
-                if (nodes != null) {
-                    for (ChainNode node : nodes) {
-                        ChainNodeStatus status = node.getStatus();
-                        if (status == ChainNodeStatus.RUNNING || status == ChainNodeStatus.READY || status == ChainNodeStatus.WAIT) {
-                            allCompleted = false;
-                            break;
-                        }
-                    }
-                }
-
-                if (allCompleted) {
-                    asyncExecutionCompleted = true;
-                    break;
-                }
-
-                Thread.sleep(50); // 短暂休眠避免CPU占用过高
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            }
-        }
-    }
-
-    /**
-     * 异步执行节点集合
-     *
-     * @param list 节点集合
-     */
-    private void doExecuteChainNodesAsync(List<ChainNode> list) {
-        for (ChainNode chainNode : list) {
-            asyncNodeExecutors.execute(() -> {
-                try {
-                    doExecuteChainNodeAsync(chainNode);
-                } catch (Exception e) {
-                    log.error("异步执行节点失败: {}", chainNode.getId(), e);
-                }
-            });
-        }
-    }
-
-    /**
-     * 异步执行单个节点
-     *
-     * @param chainNode 节点
-     */
-    private void doExecuteChainNodeAsync(ChainNode chainNode) {
-        doExecuteNodeInternal(chainNode, true);
-    }
-
-    // 通知方法
-    private void notifyExecutionStart() {
-        for (ChainExecutionListener listener : listeners) {
-            try {
-                listener.onExecutionStart(this.getId());
-            } catch (Exception e) {
-                log.warn("监听器通知异常", e);
-            }
-        }
-    }
-
-    private void notifyNodeStatusChanged(String nodeId, ChainNodeExecuteInfo executeInfo) {
-        if (parent != null) {
-            for (ChainExecutionListener listener : parent.getListeners()) {
-                try {
-                    listener.onNodeStatusChanged(this.getId(), nodeId, executeInfo);
-                } catch (Exception e) {
-                    log.warn("监听器通知异常", e);
-                }
-            }
-        }
-
-        for (ChainExecutionListener listener : listeners) {
-            try {
-                listener.onNodeStatusChanged(this.getId(), nodeId, executeInfo);
-            } catch (Exception e) {
-                log.warn("监听器通知异常", e);
-            }
-        }
-    }
-
-    private void notifyExecutionComplete(Map<String, Object> result, Exception exception) {
-        for (ChainExecutionListener listener : listeners) {
-            try {
-                listener.onExecutionComplete(this.getId(), result, exception);
-            } catch (Exception e) {
-                log.warn("监听器通知异常", e);
-            }
-        }
-    }
-
-    private void notifyProgressUpdate(int completedNodes, int totalNodes) {
-        for (ChainExecutionListener listener : listeners) {
-            try {
-                listener.onProgressUpdate(this.getId(), executeInfoMap, completedNodes, totalNodes);
-            } catch (Exception e) {
-                log.warn("监听器通知异常", e);
-            }
-        }
     }
 
     /**
@@ -1083,42 +479,24 @@ public class Chain extends ChainNode {
                 Thread.currentThread().interrupt();
             }
         }
+        if (asyncNodeExecutors != null && !asyncNodeExecutors.isShutdown()) {
+            asyncNodeExecutors.shutdown();
+            try {
+                if (!asyncNodeExecutors.awaitTermination(5, TimeUnit.SECONDS)) {
+                    asyncNodeExecutors.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                asyncNodeExecutors.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
     /**
      * 获取节点参数数据（兼容旧API）
      */
     public Map<String, Object> getParametersData(ChainNode node) {
-        List<Parameter> parameters = node.getParameters();
-        Map<String, Object> result = new HashMap<>();
-        List<String> validParameters = new ArrayList<>();
-        for (Parameter parameter : parameters) {
-            Object value = null;
-            if (parameter.getRefType() == RefType.REF) {
-                List<String> refValue = parameter.getRefValue();
-                if (refValue.size() >= 2) {
-                    Object nodeResult = getMemory().get(refValue.get(0));
-                    if (nodeResult instanceof Map) {
-                        Map<String, Object> nodeResultMap = (Map<String, Object>) nodeResult;
-                        value = nodeResultMap.get(refValue.get(1));
-                    }
-                }
-            } else {
-                value = parameter.getDefaultValue();
-            }
-            if (value == null) {
-                value = parameter.getDefaultValue();
-            }
-            if (parameter.isRequire() && value == null) {
-                validParameters.add("参数 " + parameter.getName() + " 缺失");
-            }
-            result.put(parameter.getName(), value);
-        }
-        if (!validParameters.isEmpty()) {
-            throw new RuntimeException("参数验证失败：" + String.join(",", validParameters));
-        }
-
-        return result;
+        return ParameterResolver.resolveFromMemory(node.getParameters(), getMemory());
     }
 
     public void clearExecuteInfoMap(){

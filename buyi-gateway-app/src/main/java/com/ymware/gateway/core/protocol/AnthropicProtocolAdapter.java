@@ -10,11 +10,11 @@ import org.springframework.stereotype.Component;
  * SSE 事件完整序列：message_start → content_block_start → content_block_delta(多个)
  * → content_block_stop → message_delta → message_stop。
  * 委托 SDK 的 {@link com.ymware.gateway.sdk.protocol.AnthropicProtocolAdapter}，
- * 通过 {@link AbstractSdkProtocolAdapter} 完成类型转换和 SSE 桥接。
+ * 通过 {@link AbstractSseProtocolAdapter} 完成类型转换和 SSE 桥接。
  * </p>
  */
 @Component
-public class AnthropicProtocolAdapter extends AbstractSdkProtocolAdapter {
+public class AnthropicProtocolAdapter extends AbstractSseProtocolAdapter {
 
     private final com.ymware.gateway.sdk.protocol.AnthropicProtocolAdapter sdkAdapter;
 

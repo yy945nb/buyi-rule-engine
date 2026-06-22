@@ -1,7 +1,7 @@
 package com.ymware.engine.domain.workflow.model;
 
 import com.ymware.engine.domain.workflow.type.ChainNodeStatus;
-import com.ymware.engine.domain.workflow.type.NodeTypeEnum;
+import com.ymware.engine.domain.workflow.type.NodeType;
 import lombok.Data;
 
 import java.util.ArrayList;
@@ -19,7 +19,7 @@ public class ChainNodeExecuteInfo {
 
     private String id;
     private String executeInfoId;
-    private NodeTypeEnum type;
+    private NodeType type;
     private String branch;
     private ChainNodeStatus status;
     private Long triggerTime;

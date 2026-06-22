@@ -3,7 +3,7 @@ import com.ymware.engine.config.RuleEngineConfiguration;
 
 import cn.hutool.core.collection.CollUtil;
 import com.ymware.engine.domain.rule.service.Input;
-import com.ymware.engine.domain.rule.service.DataSupport;
+import com.ymware.engine.domain.rule.service.RuleDataSupport;
 import com.ymware.engine.domain.rule.service.JsonParse;
 import com.ymware.engine.domain.value.model.Parameter;
 import com.ymware.engine.domain.rule.scorecard.strategy.ScoreCardStrategy;
@@ -33,7 +33,7 @@ import java.util.Map;
 @EqualsAndHashCode(callSuper = true)
 @Slf4j
 @Data
-public class ScoreCard extends DataSupport implements JsonParse {
+public class ScoreCard extends RuleDataSupport implements JsonParse {
 
     /**
      * 规则集

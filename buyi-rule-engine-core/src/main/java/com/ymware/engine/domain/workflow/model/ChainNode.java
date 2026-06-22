@@ -2,7 +2,7 @@ package com.ymware.engine.domain.workflow.model;
 
 import com.ymware.engine.domain.value.model.Parameter;
 import com.ymware.engine.domain.workflow.type.ChainNodeStatus;
-import com.ymware.engine.domain.workflow.type.NodeTypeEnum;
+import com.ymware.engine.domain.workflow.type.NodeType;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -20,7 +20,7 @@ public abstract class ChainNode implements Serializable {
 
     protected String description;
 
-    protected NodeTypeEnum nodeType;
+    protected NodeType nodeType;
 
     protected List<ChainEdge> inwardEdges = new ArrayList<>();
 

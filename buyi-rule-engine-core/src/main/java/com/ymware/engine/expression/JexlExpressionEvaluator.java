@@ -62,8 +62,9 @@ public class JexlExpressionEvaluator implements ExpressionEvaluator {
             throw new ExpressionEvaluationException("Expression cannot be null or empty");
         }
         try {
-            // Check if this is a script (contains semicolons, multiple statements, loops)
-            boolean isScript = expression.contains(";") || expression.contains("for (");
+            // Check if this is a script (multi-statement with semicolons outside strings,
+            // or contains control flow keywords)
+            boolean isScript = isScriptExpression(expression);
             JexlContext jexlContext = createJexlContext(context);
             Object result;
 
@@ -172,6 +173,37 @@ public class JexlExpressionEvaluator implements ExpressionEvaluator {
             logger.debug("Invalid expression '{}': {}", expression, e.getMessage());
             return false;
         }
+    }
+
+    /**
+     * Determine if the expression is a script (multi-statement) rather than a simple expression.
+     * Uses structural analysis instead of fragile semicolon detection.
+     */
+    private boolean isScriptExpression(String expression) {
+        String trimmed = expression.trim();
+        // Multi-line expressions are scripts
+        if (trimmed.contains("\n")) {
+            return true;
+        }
+        // Semicolons outside of string literals indicate multiple statements
+        // Simple heuristic: check for semicolons not inside quotes
+        boolean inSingleQuote = false;
+        boolean inDoubleQuote = false;
+        for (int i = 0; i < trimmed.length(); i++) {
+            char c = trimmed.charAt(i);
+            if (c == '\'' && !inDoubleQuote) {
+                inSingleQuote = !inSingleQuote;
+            } else if (c == '"' && !inSingleQuote) {
+                inDoubleQuote = !inDoubleQuote;
+            } else if (c == ';' && !inSingleQuote && !inDoubleQuote) {
+                return true;
+            }
+        }
+        // Control flow keywords indicate scripts
+        String lower = trimmed.toLowerCase();
+        return lower.startsWith("var ") || lower.startsWith("if ")
+                || lower.startsWith("for ") || lower.startsWith("while ")
+                || lower.startsWith("return ") || lower.startsWith("{");
     }
 
     /**

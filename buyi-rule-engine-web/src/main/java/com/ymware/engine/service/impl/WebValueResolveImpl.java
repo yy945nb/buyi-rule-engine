@@ -70,9 +70,9 @@ public class WebValueResolveImpl extends BaseValueResolveImpl implements WebValu
                 // 表达式配置
                 value.setVariableValue(engineVariable.getValue());
             }
-        } else if (cValue instanceof Executor) {
+        } else if (cValue instanceof DelegatingValue) {
             value.setType(VariableType.GENERAL_RULE.getType());
-            Executor executor = (Executor) cValue;
+            DelegatingValue executor = (DelegatingValue) cValue;
             RuleEngineGeneralRule ruleEngineGeneralRule = this.ruleEngineGeneralRuleManager.getById(executor.getId());
             if (ruleEngineGeneralRule == null) {
                 throw new ApiException("缺失普通规则：" + executor.getId());

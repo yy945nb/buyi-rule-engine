@@ -5,7 +5,7 @@ import com.ymware.engine.domain.workflow.model.GaiaWorkflow;
 import com.ymware.engine.domain.workflow.model.TimeoutConfig;
 import com.ymware.engine.workflow.tools.ParameterParseUtils;
 import com.ymware.engine.domain.workflow.model.ChainNode;
-import com.ymware.engine.domain.workflow.type.NodeTypeEnum;
+import com.ymware.engine.domain.workflow.type.NodeType;
 import cn.hutool.json.JSONObject;
 
 /**
@@ -33,7 +33,7 @@ public class NodeParserUtils {
         // 设置基础属性
         node.setId(nodeJSONObject.getStr("id"));
         node.setName(nodeJSONObject.getStr("name"));
-        node.setNodeType(NodeTypeEnum.of(nodeJSONObject.getStr("type")));
+        node.setNodeType(NodeType.of(nodeJSONObject.getStr("type")));
 
         return node;
     }

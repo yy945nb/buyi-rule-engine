@@ -7,7 +7,7 @@ import com.ymware.gateway.admin.model.dataobject.ProviderConfigDO;
 import com.ymware.gateway.admin.model.req.ProviderApiKeyAddReq;
 import com.ymware.gateway.admin.model.req.ProviderApiKeyUpdateReq;
 import com.ymware.gateway.admin.model.rsp.ProviderApiKeyRsp;
-import com.ymware.gateway.admin.service.impl.ProviderApiKeyServiceImpl;
+
 import com.ymware.gateway.common.exception.BizException;
 import com.ymware.gateway.infra.crypto.ApiKeyEncryptor;
 import org.junit.jupiter.api.BeforeEach;

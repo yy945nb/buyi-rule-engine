@@ -1,6 +1,6 @@
 package com.ymware.engine.domain.rule.maker;
 
-import com.ymware.engine.domain.rule.model.RuleExecuteResultTypeEnum;
+import com.ymware.engine.domain.rule.model.RuleExecuteResultType;
 import org.springframework.stereotype.Component;
 
 import jakarta.annotation.Resource;
@@ -24,9 +24,9 @@ public class ExecuteContentMakerFactory {
      * @return
      */
     public RuleExecuteContentMaker getRuleContentMaker(String type) {
-        if (RuleExecuteResultTypeEnum.JAVA_EXPRESS.getCode().equals(type)) {
+        if (RuleExecuteResultType.JAVA_EXPRESS.getCode().equals(type)) {
             return executeContentJavaExpressMaker;
-        } else if (RuleExecuteResultTypeEnum.SQL_RESULT.getCode().equals(type)) {
+        } else if (RuleExecuteResultType.SQL_RESULT.getCode().equals(type)) {
             return executeContentSqlResultMaker;
         }
 

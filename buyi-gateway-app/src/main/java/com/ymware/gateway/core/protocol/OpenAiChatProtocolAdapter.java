@@ -8,11 +8,11 @@ import org.springframework.stereotype.Component;
  * OpenAI Chat Completions 协议适配器
  * <p>
  * 委托 SDK 的 {@link com.ymware.gateway.sdk.protocol.OpenAiChatProtocolAdapter}，
- * 通过 {@link AbstractSdkProtocolAdapter} 完成类型转换和 SSE 桥接。
+ * 通过 {@link AbstractSseProtocolAdapter} 完成类型转换和 SSE 桥接。
  * </p>
  */
 @Component
-public class OpenAiChatProtocolAdapter extends AbstractSdkProtocolAdapter {
+public class OpenAiChatProtocolAdapter extends AbstractSseProtocolAdapter {
 
     private final com.ymware.gateway.sdk.protocol.OpenAiChatProtocolAdapter sdkAdapter;
 

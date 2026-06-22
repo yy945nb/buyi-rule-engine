@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
  * </p>
  */
 @Component
-public class OpenAiEmbeddingProtocolAdapter extends AbstractSdkProtocolAdapter {
+public class OpenAiEmbeddingProtocolAdapter extends AbstractSseProtocolAdapter {
 
     private final com.ymware.gateway.sdk.protocol.OpenAiEmbeddingProtocolAdapter sdkAdapter;
 

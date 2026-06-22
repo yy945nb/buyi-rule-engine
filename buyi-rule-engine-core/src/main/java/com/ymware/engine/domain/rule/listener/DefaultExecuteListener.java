@@ -1,6 +1,6 @@
 package com.ymware.engine.domain.rule.listener;
 
-import com.ymware.engine.domain.rule.service.DataSupport;
+import com.ymware.engine.domain.rule.service.RuleDataSupport;
 
 /**
  * 〈一句话功能简述〉<br>
@@ -10,6 +10,6 @@ import com.ymware.engine.domain.rule.service.DataSupport;
  * @date 2020/8/16
  * @since 1.0.0
  */
-public class DefaultExecuteListener<T extends DataSupport> implements ExecuteListener<T> {
+public class DefaultExecuteListener<T extends RuleDataSupport> implements ExecuteListener<T> {
 
 }

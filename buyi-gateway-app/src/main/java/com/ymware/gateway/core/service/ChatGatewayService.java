@@ -6,7 +6,7 @@ import com.ymware.gateway.sdk.model.UnifiedReasoningConfig;
 import com.ymware.gateway.sdk.model.UnifiedRequest;
 import com.ymware.gateway.sdk.model.UnifiedStreamEvent;
 import com.ymware.gateway.sdk.model.UnifiedUsage;
-import com.ymware.gateway.core.protocol.ProtocolAdapter;
+import com.ymware.gateway.core.protocol.SseProtocolAdapter;
 import com.ymware.gateway.core.resilience.FailoverStrategy;
 import com.ymware.gateway.core.router.ModelRouter;
 import com.ymware.gateway.core.router.RouteResult;
@@ -59,14 +59,14 @@ public class ChatGatewayService extends AbstractGatewayService {
     /**
      * 处理非流式聊天请求（含 usage 统计 + 故障转移）
      */
-    public Mono<?> chatWithStats(Object rawRequest, ProtocolAdapter adapter, RequestStatsContext context) {
+    public Mono<?> chatWithStats(Object rawRequest, SseProtocolAdapter adapter, RequestStatsContext context) {
         return executeNonStreaming(rawRequest, adapter, context, ProviderClient::chat);
     }
 
     /**
      * 处理流式聊天请求（含 usage 统计 + 故障转移）
      */
-    public Flux<?> streamChat(Object rawRequest, ProtocolAdapter adapter, RequestStatsContext context) {
+    public Flux<?> streamChat(Object rawRequest, SseProtocolAdapter adapter, RequestStatsContext context) {
         UnifiedRequest unifiedRequest = adapter.parse(rawRequest);
         onPreRoute(unifiedRequest, context);
         applyActiveRequestInfo(unifiedRequest, context);

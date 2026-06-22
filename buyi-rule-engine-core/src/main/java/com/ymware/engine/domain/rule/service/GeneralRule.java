@@ -25,7 +25,7 @@ import java.util.Objects;
 @EqualsAndHashCode(callSuper = true)
 @Slf4j
 @Data
-public class GeneralRule extends DataSupport implements JsonParse {
+public class GeneralRule extends RuleDataSupport implements JsonParse {
 
     private Rule rule;
 

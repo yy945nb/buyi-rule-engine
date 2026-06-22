@@ -1,6 +1,6 @@
 package com.ymware.engine.service;
 
-import com.ymware.engine.domain.rule.service.Parameter;
+import com.ymware.engine.domain.rule.service.RuleParameter;
 import com.ymware.engine.vo.reference.ReferenceData;
 import com.ymware.engine.vo.reference.ReferenceDataMap;
 import com.ymware.engine.vo.rule.general.GeneralRuleBody;
@@ -40,7 +40,7 @@ public interface DataReferenceService {
      * @param referenceData r
      * @return map
      */
-    Map<String, Parameter> referenceInputParamList(ReferenceData referenceData);
+    Map<String, RuleParameter> referenceInputParamList(ReferenceData referenceData);
 
 
     /**
@@ -68,7 +68,7 @@ public interface DataReferenceService {
      * @param version 版本
      * @return param
      */
-    Collection<Parameter> getRuleSetParameters(Long id, String version);
+    Collection<RuleParameter> getRuleSetParameters(Long id, String version);
 
     /**
      * 获取规则请求参数
@@ -77,5 +77,5 @@ public interface DataReferenceService {
      * @param version 版本
      * @return param
      */
-    Collection<Parameter> getGeneralRuleParameters(Long id, String version);
+    Collection<RuleParameter> getGeneralRuleParameters(Long id, String version);
 }

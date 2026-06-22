@@ -23,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 /**
@@ -43,7 +44,7 @@ public class AvgFunction {
         List<BigDecimal> list = params.getList();
         Integer scale = params.getScale();
         return list.stream().reduce(BigDecimal.ZERO, BigDecimal::add)
-                .divide(BigDecimal.valueOf(list.size()), scale, BigDecimal.ROUND_HALF_UP);
+                .divide(BigDecimal.valueOf(list.size()), scale, RoundingMode.HALF_UP);
     }
 
     @Data

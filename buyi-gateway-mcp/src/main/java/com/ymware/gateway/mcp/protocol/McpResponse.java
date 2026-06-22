@@ -2,8 +2,6 @@ package com.ymware.gateway.mcp.protocol;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -29,8 +27,6 @@ public class McpResponse {
     public boolean isError() {
         return error != null;
     }
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     public static McpResponse success(Object id, JsonNode result) {
         return McpResponse.builder().id(id).result(result).build();

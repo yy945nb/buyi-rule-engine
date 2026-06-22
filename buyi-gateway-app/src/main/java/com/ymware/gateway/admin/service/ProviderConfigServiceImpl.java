@@ -404,7 +404,7 @@ public class ProviderConfigServiceImpl implements IProviderConfigService {
     /**
      * 插入单个 API Key（在 Provider 新增事务内调用）。
      *
-     * <p>逻辑与 {@link com.ymware.gateway.admin.service.impl.ProviderApiKeyServiceImpl#add(ProviderApiKeyAddReq)} 保持一致，
+     * <p>逻辑与 {@link ProviderApiKeyServiceImpl#add(ProviderApiKeyAddReq)} 保持一致，
      * 但省略 provider 存在性检查（外层正在创建）和独立事务/运行时刷新（由外层 add 统一处理）。
      * 如需修改加密、查重或字段默认值，务必同步两处。</p>
      */

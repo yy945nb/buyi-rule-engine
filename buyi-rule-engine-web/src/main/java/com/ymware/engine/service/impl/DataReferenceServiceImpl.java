@@ -5,7 +5,7 @@ import com.ymware.engine.service.*;
 
 
 import cn.hutool.core.collection.CollUtil;
-import com.ymware.engine.domain.rule.service.Parameter;
+import com.ymware.engine.domain.rule.service.RuleParameter;
 import com.ymware.engine.exception.ValidException;
 import com.ymware.engine.domain.value.model.Formula;
 import com.ymware.engine.domain.value.model.VariableType;
@@ -137,7 +137,7 @@ public class DataReferenceServiceImpl implements DataReferenceService {
      * @return map
      */
     @Override
-    public Map<String, Parameter> referenceInputParamList(ReferenceData referenceData) {
+    public Map<String, RuleParameter> referenceInputParamList(ReferenceData referenceData) {
         Set<Long> inputParameterIds = referenceData.getInputParameterIds();
         if (CollUtil.isEmpty(inputParameterIds)) {
             return Collections.emptyMap();
@@ -145,12 +145,12 @@ public class DataReferenceServiceImpl implements DataReferenceService {
         List<RuleEngineInputParameter> list = this.ruleEngineInputParameterManager.lambdaQuery()
                 .in(RuleEngineInputParameter::getId, inputParameterIds).list();
         return list.stream().map(m -> {
-            Parameter parameter = new Parameter();
+            RuleParameter parameter = new RuleParameter();
             parameter.setName(m.getName());
             parameter.setCode(m.getCode());
             parameter.setValueType(m.getValueType());
             return parameter;
-        }).collect(Collectors.toMap(Parameter::getCode, Function.identity(),
+        }).collect(Collectors.toMap(RuleParameter::getCode, Function.identity(),
                 // 如果code相同
                 (o, n) -> o));
     }
@@ -299,7 +299,7 @@ public class DataReferenceServiceImpl implements DataReferenceService {
      * @return param
      */
     @Override
-    public Collection<Parameter> getRuleSetParameters(Long id, String version) {
+    public Collection<RuleParameter> getRuleSetParameters(Long id, String version) {
         ReferenceData referenceData = this.getReferenceData(DataType.RULE_SET.getType(), id, version);
         if (referenceData == null) {
             return Collections.emptyList();
@@ -332,7 +332,7 @@ public class DataReferenceServiceImpl implements DataReferenceService {
      * @param dataInputParameterIds 参数id
      * @return param
      */
-    private Collection<Parameter> processParameters(Set<Long> variableIds, Set<Long> dataInputParameterIds) {
+    private Collection<RuleParameter> processParameters(Set<Long> variableIds, Set<Long> dataInputParameterIds) {
         Set<RuleEngineInputParameter> parameters = new HashSet<>();
         if (CollUtil.isNotEmpty(variableIds)) {
             List<RuleEngineVariable> engineVariables = this.ruleEngineVariableManager.lambdaQuery()
@@ -364,7 +364,7 @@ public class DataReferenceServiceImpl implements DataReferenceService {
         }
         if (CollUtil.isNotEmpty(parameters)) {
             return parameters.stream().map(m -> {
-                Parameter parameter = new Parameter();
+                RuleParameter parameter = new RuleParameter();
                 parameter.setName(m.getName());
                 parameter.setCode(m.getCode());
                 parameter.setValueType(m.getValueType());
@@ -382,7 +382,7 @@ public class DataReferenceServiceImpl implements DataReferenceService {
      * @return param
      */
     @Override
-    public Collection<Parameter> getGeneralRuleParameters(Long id, String version) {
+    public Collection<RuleParameter> getGeneralRuleParameters(Long id, String version) {
         ReferenceData referenceData = this.getReferenceData(DataType.GENERAL_RULE.getType(), id, version);
         if (referenceData == null) {
             return Collections.emptyList();

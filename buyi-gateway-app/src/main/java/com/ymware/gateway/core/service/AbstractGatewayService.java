@@ -3,7 +3,7 @@ package com.ymware.gateway.core.service;
 import com.ymware.gateway.core.GatewayMetadataKeys;
 import com.ymware.gateway.core.capability.CapabilityChecker;
 import com.ymware.gateway.core.error.GatewayException;
-import com.ymware.gateway.core.protocol.ProtocolAdapter;
+import com.ymware.gateway.core.protocol.SseProtocolAdapter;
 import com.ymware.gateway.core.resilience.FailoverStrategy;
 import com.ymware.gateway.core.router.ModelRouter;
 import com.ymware.gateway.core.router.RouteResult;
@@ -51,7 +51,7 @@ public abstract class AbstractGatewayService {
      * @param context      统计上下文（可 null）
      * @param providerCall Provider 调用函数，如 ProviderClient::embedding
      */
-    protected Mono<?> executeNonStreaming(Object rawRequest, ProtocolAdapter adapter,
+    protected Mono<?> executeNonStreaming(Object rawRequest, SseProtocolAdapter adapter,
                                           RequestStatsContext context,
                                           BiFunction<ProviderClient, UnifiedRequest, Mono<UnifiedResponse>> providerCall) {
         UnifiedRequest unifiedRequest = adapter.parse(rawRequest);

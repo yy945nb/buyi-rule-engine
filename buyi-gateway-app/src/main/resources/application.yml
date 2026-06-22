@@ -121,6 +121,9 @@ gateway:
       cache-expire: 30m
       health-check-interval: 30s
     # 路由规则引擎配置
+    # 注意：此处定义的规则为种子数据，启动时由 YamlRuleConfigLoader 同步到数据库（仅插入不存在的）。
+    # 运行时以数据库规则为准，可通过管理后台动态增删改规则，无需重启服务。
+    # DB 中的规则修改不会被此处的配置覆盖。
     routing:
       rules:
         - name: "文件生成路由"

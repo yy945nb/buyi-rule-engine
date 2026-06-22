@@ -15,7 +15,7 @@
  */
 package com.ymware.engine.domain.rule.listener;
 
-import com.ymware.engine.domain.rule.service.DataSupport;
+import com.ymware.engine.domain.rule.service.RuleDataSupport;
 import com.ymware.engine.domain.rule.service.Input;
 import com.ymware.engine.domain.rule.service.Output;
 import org.slf4j.Logger;
@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
  * @date 2020/8/3
  * @since 1.0.0
  */
-public interface ExecuteListener<T extends DataSupport> {
+public interface ExecuteListener<T extends RuleDataSupport> {
 
     Logger log = LoggerFactory.getLogger(ExecuteListener.class);
 

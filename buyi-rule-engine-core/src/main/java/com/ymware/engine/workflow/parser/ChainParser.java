@@ -6,7 +6,7 @@ import com.ymware.engine.domain.workflow.model.Chain;
 import com.ymware.engine.domain.workflow.model.ChainEdge;
 import com.ymware.engine.domain.workflow.model.ChainNode;
 import com.ymware.engine.workflow.tools.SpringExpressionParser;
-import com.ymware.engine.domain.workflow.type.NodeTypeEnum;
+import com.ymware.engine.domain.workflow.type.NodeType;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
@@ -27,7 +27,7 @@ public class ChainParser {
         for (int i = 0; i < nodes.size(); i++) {
             JSONObject nodeJSONObject = nodes.getJSONObject(i);
             String type = nodeJSONObject.getStr("type");
-            if (NodeTypeEnum.notParse(type)) {
+            if (NodeType.notParse(type)) {
                 continue;
             }
             ChainNode node = nodeParserMap.get(type).parse(nodeJSONObject, workflow);

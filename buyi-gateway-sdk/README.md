@@ -15,8 +15,8 @@
 
 ```xml
 <dependency>
-    <groupId>com.code.aigateway</groupId>
-    <artifactId>ai-gateway-sdk</artifactId>
+    <groupId>com.ymware.gateway</groupId>
+    <artifactId>buyi-gateway-sdk</artifactId>
     <version>1.0-SNAPSHOT</version>
 </dependency>
 ```
@@ -37,8 +37,8 @@
 `AiGatewaySdk` 提供一行式 API，自动注册全部四个协议适配器，适合大多数场景。
 
 ```java
-import com.code.aigateway.sdk.AiGatewaySdk;
-import com.code.aigateway.sdk.model.*;
+import com.ymware.gateway.sdk.AiGatewaySdk;
+import com.ymware.gateway.sdk.model.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 // 1. 初始化（自动注册全部协议适配器）
@@ -125,9 +125,9 @@ String anthropicResponse = sdk.encodeResponse(ProtocolType.ANTHROPIC, response);
 当你需要更精细的控制时，可以直接使用底层适配器。
 
 ```java
-import com.code.aigateway.sdk.protocol.OpenAiChatProtocolAdapter;
-import com.code.aigateway.sdk.protocol.AnthropicProtocolAdapter;
-import com.code.aigateway.sdk.model.*;
+import com.ymware.gateway.sdk.protocol.OpenAiChatProtocolAdapter;
+import com.ymware.gateway.sdk.protocol.AnthropicProtocolAdapter;
+import com.ymware.gateway.sdk.model.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 ObjectMapper objectMapper = new ObjectMapper();
@@ -155,8 +155,8 @@ Object body = adapter.encodeResponse(response);
 只注册你需要的协议适配器，或注册自定义实现。
 
 ```java
-import com.code.aigateway.sdk.registry.ProtocolRegistry;
-import com.code.aigateway.sdk.AiGatewaySdk;
+import com.ymware.gateway.sdk.registry.ProtocolRegistry;
+import com.ymware.gateway.sdk.AiGatewaySdk;
 
 // 只注册 OpenAI Chat 和 Anthropic 两个协议
 ProtocolRegistry registry = ProtocolRegistry.builder()
@@ -179,8 +179,8 @@ System.out.println(sdk.registry().getRegisteredProtocols());
 流式场景下，将 LLM 返回的文本增量（delta）编码为协议特定的 SSE/NDJSON 事件。
 
 ```java
-import com.code.aigateway.sdk.protocol.*;
-import com.code.aigateway.sdk.model.*;
+import com.ymware.gateway.sdk.protocol.*;
+import com.ymware.gateway.sdk.model.*;
 
 ProtocolAdapter adapter = new OpenAiChatProtocolAdapter(objectMapper);
 
@@ -250,7 +250,7 @@ List<EncodedEvent> events = geminiAdapter.encodeStreamEvent(delta, context);
 ### 构建统一响应模型
 
 ```java
-import com.code.aigateway.sdk.model.*;
+import com.ymware.gateway.sdk.model.*;
 
 // 构建包含文本输出的响应
 UnifiedResponse response = new UnifiedResponse();
@@ -313,8 +313,8 @@ UnifiedRequest request = sdk.parse(ProtocolType.OPENAI_CHAT, json);
 ### 错误处理
 
 ```java
-import com.code.aigateway.sdk.error.ErrorCode;
-import com.code.aigateway.sdk.error.ProtocolException;
+import com.ymware.gateway.sdk.error.ErrorCode;
+import com.ymware.gateway.sdk.error.ProtocolException;
 
 try {
     UnifiedRequest request = sdk.parse(ProtocolType.OPENAI_CHAT, invalidJson);

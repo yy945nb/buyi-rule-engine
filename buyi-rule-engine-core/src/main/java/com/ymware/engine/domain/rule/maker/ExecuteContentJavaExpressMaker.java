@@ -4,7 +4,7 @@ import com.ymware.engine.model.dto.TagBusinessRuleDto;
 import com.ymware.engine.model.dto.TagDefinitionDto;
 import com.ymware.engine.model.response.TagRuleExecutionLogResponse;
 import com.ymware.engine.domain.rule.model.RuleCheckContext;
-import com.ymware.engine.domain.rule.service.RuleEngine;
+import com.ymware.engine.domain.rule.service.JexlRuleEvaluator;
 import com.ymware.engine.domain.rule.model.TagExecuteRule;
 import com.ymware.engine.expression.ExpressionEvaluator;
 import com.ymware.engine.domain.rule.model.ExecutionContext;
@@ -25,7 +25,7 @@ import java.util.regex.Pattern;
 public class ExecuteContentJavaExpressMaker extends RuleExecuteContentMaker {
 
     @Resource
-    private RuleEngine ruleEngine;
+    private JexlRuleEvaluator ruleEngine;
 
     @Resource
     private ExpressionEvaluator expressionEvaluator;

@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
  * </p>
  */
 @Component
-public class RerankProtocolAdapter extends AbstractSdkProtocolAdapter {
+public class RerankProtocolAdapter extends AbstractSseProtocolAdapter {
 
     private final com.ymware.gateway.sdk.protocol.RerankProtocolAdapter sdkAdapter;
 

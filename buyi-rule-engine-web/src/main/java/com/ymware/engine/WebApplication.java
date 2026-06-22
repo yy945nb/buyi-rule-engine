@@ -17,6 +17,7 @@ package com.ymware.engine;
 
 import lombok.extern.slf4j.Slf4j;
 import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration;
@@ -38,11 +39,8 @@ import org.springframework.web.filter.CorsFilter;
 
 /**
  * <p>
- * 启动优化参数:
- * -server -Xms4096m -Xmx4096m  -Xss1024k -XX:SurvivorRatio=8 -XX:+UseConcMarkSweepGC
- * 说明:
- * -XX:+UseParallelOldGC:配置老年代垃圾收集器为并行收集。JDK6.0支持对老年代并行收集。
- * SurvivorRatio:年轻代中Eden区与两个Survivor区的比值
+ * 启动优化参数 (JDK 21):
+ * -server -Xms4096m -Xmx4096m -XX:+UseZGC -XX:MaxRAMPercentage=75.0
  * <p>
  *
  * @author 丁乾文
@@ -64,6 +62,9 @@ import org.springframework.web.filter.CorsFilter;
 @Import({RestTemplate.class})
 @EnableAspectJAutoProxy(exposeProxy = true)
 public class WebApplication {
+
+    @Value("${cors.allowed-origins:http://localhost:3000}")
+    private String[] allowedOrigins;
 
     /**
      * boot-engine启动方法
@@ -90,17 +91,17 @@ public class WebApplication {
     public CorsFilter corsFilter() {
         final UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         final CorsConfiguration config = new CorsConfiguration();
-        // 允许cookies跨域
         config.setAllowCredentials(true);
-        // 允许向该服务器提交请求的URI，*表示全部允许，在SpringMVC中，如果设成*，会自动转成当前请求头中的Origin
-        config.addAllowedOrigin(CorsConfiguration.ALL);
-        // 允许访问的头信息,*表示全部
+        // 从配置文件读取允许的来源，默认仅允许 localhost:3000
+        for (String origin : allowedOrigins) {
+            config.addAllowedOrigin(origin);
+        }
         config.addAllowedHeader(CorsConfiguration.ALL);
-        // 预检请求的缓存时间（秒），即在这个时间段里，对于相同的跨域请求不会再预检了
         config.setMaxAge(18000L);
-        // 允许提交请求的方法，*表示全部允许
         config.addAllowedMethod(RequestMethod.GET.name());
         config.addAllowedMethod(RequestMethod.POST.name());
+        config.addAllowedMethod(RequestMethod.PUT.name());
+        config.addAllowedMethod(RequestMethod.DELETE.name());
         source.registerCorsConfiguration("/**", config);
         return new CorsFilter(source);
     }

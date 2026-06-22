@@ -27,7 +27,7 @@ public class RuleCheckService {
     private RuleSqlExecutor sqlExecutor;
 
     @Resource
-    private RuleEngine ruleEngine;
+    private JexlRuleEvaluator ruleEngine;
 
     @Resource
     private ExecuteContentMakerFactory ruleContentMakerFactory;

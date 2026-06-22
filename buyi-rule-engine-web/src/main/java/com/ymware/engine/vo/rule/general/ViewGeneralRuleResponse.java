@@ -1,6 +1,6 @@
 package com.ymware.engine.vo.rule.general;
 
-import com.ymware.engine.domain.rule.service.Parameter;
+import com.ymware.engine.domain.rule.service.RuleParameter;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -22,6 +22,6 @@ public class ViewGeneralRuleResponse extends GetGeneralRuleResponse {
     /**
      * 规则入参
      */
-    private Collection<Parameter> parameters;
+    private Collection<RuleParameter> parameters;
 
 }

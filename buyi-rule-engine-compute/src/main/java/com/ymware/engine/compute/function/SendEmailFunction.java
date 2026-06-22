@@ -60,10 +60,10 @@ public class SendEmailFunction {
         Properties props = new Properties();
         // 设置发送邮件的邮件服务器的属性
         props.put("mail.smtp.host", sendEmailInfo.getMailSmtpHost());
-        props.setProperty("mail.smtp.port", sendEmailInfo.getMailSmtpHost());
+        props.setProperty("mail.smtp.port", String.valueOf(sendEmailInfo.getMailSmtpPort()));
         // 阿里linux服务器端口号问题....com.sun.mail.util.MailConnectException: Couldn't connect to host, port: smtp
         props.setProperty("mail.smtp.ssl.enable", "true");
-        props.setProperty("mail.smtp.socketFactory.port", sendEmailInfo.getMailSmtpHost());
+        props.setProperty("mail.smtp.socketFactory.port", String.valueOf(sendEmailInfo.getMailSmtpPort()));
         props.setProperty("mail.smtp.socketFactory.class", "javax.net.ssl.SSLSocketFactory");
         props.setProperty("mail.smtp.socketFactory.fallback", "false");
         // 需要经过授权，也就是有户名和密码的校验，这样才能通过验证（一定要有这一条）

@@ -10,11 +10,11 @@ import org.springframework.stereotype.Component;
  * SSE 事件使用点分命名：response.output_text.delta、response.function_call_arguments.delta、response.completed
  * 错误格式复用 OpenAI 标准格式。
  * 委托 SDK 的 {@link com.ymware.gateway.sdk.protocol.OpenAiResponsesProtocolAdapter}，
- * 通过 {@link AbstractSdkProtocolAdapter} 完成类型转换和 SSE 桥接。
+ * 通过 {@link AbstractSseProtocolAdapter} 完成类型转换和 SSE 桥接。
  * </p>
  */
 @Component
-public class OpenAiResponsesProtocolAdapter extends AbstractSdkProtocolAdapter {
+public class OpenAiResponsesProtocolAdapter extends AbstractSseProtocolAdapter {
 
     private final com.ymware.gateway.sdk.protocol.OpenAiResponsesProtocolAdapter sdkAdapter;
 

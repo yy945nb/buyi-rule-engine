@@ -2,9 +2,6 @@ package com.ymware.gateway.mcp.protocol;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -36,8 +33,6 @@ public class McpToolCallResult {
         private String mimeType;
         private JsonNode data;
     }
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     public static McpToolCallResult text(String text) {
         return McpToolCallResult.builder()

@@ -41,7 +41,7 @@ public class Container implements Closeable {
         this.scoreCardContainer.close();
     }
 
-    public static class Body<T extends DataSupport> implements Closeable {
+    public static class Body<T extends RuleDataSupport> implements Closeable {
 
         /**
          * 启动时加载的规则/决策表

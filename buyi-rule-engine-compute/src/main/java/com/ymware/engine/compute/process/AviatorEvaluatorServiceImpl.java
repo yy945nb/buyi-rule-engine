@@ -89,7 +89,7 @@ public class AviatorEvaluatorServiceImpl extends AbstractExpressionService imple
         try {
             return FieldUtils.readDeclaredField(funMethod, fieldName, true);
         } catch (Exception e) {
-
+            logger.debug("Failed to read field '{}' from {}", fieldName, funMethod.getClass().getSimpleName(), e);
         }
         return "";
     }
@@ -100,7 +100,7 @@ public class AviatorEvaluatorServiceImpl extends AbstractExpressionService imple
             final Map<String, AviatorFunction> aviatorFunctionMap = this.applicationContext.getBeansOfType(AviatorFunction.class);
             aviatorFunctionMap.values().forEach(evaluator::addFunction);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to init context functions", e);
         }
     }
 
